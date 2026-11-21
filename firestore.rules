@@ -1,0 +1,151 @@
+rules_version = '2';
+
+// Privacy model
+// - users/{uid}                  profile: owner + friends can read, owner writes
+// - users/{uid}/private/*        owner only (goals, body data, preferences)
+// - users/{uid}/weights/*        owner; friends only if sharing.weightHistory
+// - users/{uid}/diary/*          owner; friends only if sharing.diary
+// - users/{uid}/foods/*          owner only (custom foods)
+// - users/{uid}/activities/*     owner; friends if sharing.activities and visibility == 'friends'
+// - users/{uid}/friends/*        created in pairs through an invite; either side can remove
+// - posts/*                      author; friends when visibility == 'friends'
+// - posts/*/reactions/{uid}      each user only writes their own reaction doc
+// - emojis/*                     shared custom emoji pool for all signed-in users
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isFriendOf(uid) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(uid)/friends/$(request.auth.uid));
+    }
+
+    function sharingOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get('sharing', {});
+    }
+
+    function shares(uid, key) {
+      return sharingOf(uid).get(key, false) == true;
+    }
+
+    function inviteValidFrom(inviteId, creator) {
+      let inv = get(/databases/$(database)/documents/invites/$(inviteId));
+      return inv != null && inv.data.createdBy == creator && inv.data.expiresAt > request.time;
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    match /users/{uid} {
+      allow read: if isMe(uid) || isFriendOf(uid);
+      allow create: if isMe(uid) && request.resource.data.uid == uid;
+      allow update: if isMe(uid) && request.resource.data.uid == uid;
+      allow delete: if false;
+
+      match /private/{docId} {
+        allow read, write: if isMe(uid);
+      }
+
+      match /foods/{foodId} {
+        allow read, write: if isMe(uid);
+      }
+
+      match /weights/{date} {
+        allow read: if isMe(uid) || (isFriendOf(uid) && shares(uid, 'weightHistory'));
+        allow write: if isMe(uid);
+      }
+
+      match /diary/{date} {
+        allow read: if isMe(uid) || (isFriendOf(uid) && shares(uid, 'diary'));
+        allow write: if isMe(uid);
+      }
+
+      match /activities/{activityId} {
+        allow read: if isMe(uid) ||
+          (isFriendOf(uid) && shares(uid, 'activities') && resource.data.visibility == 'friends');
+        allow write: if isMe(uid);
+      }
+
+      match /friends/{friendId} {
+        allow read: if isMe(uid) || isMe(friendId);
+        // A friendship is created as two mirrored docs by the person accepting an invite.
+        allow create: if signedIn()
+          && uid != friendId
+          && request.resource.data.keys().hasOnly(['uid', 'inviteId', 'since'])
+          && request.resource.data.uid == friendId
+          && request.resource.data.inviteId is string
+          && (
+            (isMe(uid) && inviteValidFrom(request.resource.data.inviteId, friendId)) ||
+            (isMe(friendId) && inviteValidFrom(request.resource.data.inviteId, uid))
+          );
+        allow update: if false;
+        allow delete: if isMe(uid) || isMe(friendId);
+      }
+    }
+
+    match /invites/{inviteId} {
+      // Anyone holding the link (the id) can read it; only the creator can list theirs.
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.expiresAt is timestamp
+        && inviteId.size() >= 16;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
+    function canSeePost(post) {
+      return isMe(post.authorId) || (post.visibility == 'friends' && isFriendOf(post.authorId));
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn() && canSeePost(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.visibility in ['friends', 'private']
+        && request.resource.data.kind in ['status', 'photo', 'activity', 'day']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000;
+      allow update: if isMe(resource.data.authorId)
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.visibility in ['friends', 'private'];
+      allow delete: if isMe(resource.data.authorId);
+
+      match /reactions/{reactorId} {
+        function post() {
+          return get(/databases/$(database)/documents/posts/$(postId)).data;
+        }
+        allow read: if signedIn() && canSeePost(post());
+        allow create, update: if isMe(reactorId)
+          && canSeePost(post())
+          && request.resource.data.keys().hasOnly(['uid', 'emojis', 'updatedAt'])
+          && request.resource.data.uid == reactorId
+          && request.resource.data.emojis is list
+          && request.resource.data.emojis.size() <= 50;
+        // reactor removes their own; the post author can clean up on delete
+        allow delete: if isMe(reactorId) || isMe(post().authorId);
+      }
+    }
+
+    match /emojis/{name} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && name.matches('^[a-z0-9_-]{2,32}$')
+        && request.resource.data.name == name
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.url is string
+        && request.resource.data.path is string;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+  }
+}

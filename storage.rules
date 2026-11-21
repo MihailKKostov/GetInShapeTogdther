@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Images are resized in the browser before upload.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isImage(maxBytes) {
+      return request.resource.size < maxBytes
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Avatars, post photos and progress photos live under the owner's folder.
+    match /users/{uid}/{allPaths=**} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid && isImage(8 * 1024 * 1024);
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Custom emoji images, stored under the uploader's id.
+    match /emojis/{uid}/{file} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid && isImage(256 * 1024);
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
