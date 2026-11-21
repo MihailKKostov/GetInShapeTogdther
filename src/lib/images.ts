@@ -65,12 +65,12 @@ export async function textEmoji(text: string, bg: string, fg: string, size = 128
   ctx.fillStyle = fg;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const lines = text.toUpperCase().split(/\n|\\n/).slice(0, 3);
+  const lines = text.split(/\n|\\n/).slice(0, 3);
   const longest = Math.max(...lines.map((l) => l.length), 1);
-  let fs = Math.min(size * 0.8 / lines.length, (size * 0.92) / (longest * 0.62));
+  let fs = Math.min(size * 0.8 / lines.length, (size * 0.9) / (longest * 0.66));
   fs = Math.max(10, Math.floor(fs));
-  await document.fonts?.load(`700 ${fs}px "JetBrains Mono"`).catch(() => undefined);
-  ctx.font = `700 ${fs}px "JetBrains Mono", ui-monospace, monospace`;
+  await document.fonts?.load(`800 ${fs}px "Inter"`).catch(() => undefined);
+  ctx.font = `800 ${fs}px "Inter", system-ui, sans-serif`;
   const lh = fs * 1.02;
   lines.forEach((l, i) => ctx.fillText(l, size / 2, size / 2 + (i - (lines.length - 1) / 2) * lh));
   return { blob: await canvasToBlob(c, 'image/png', 1), w: size, h: size, type: 'image/png' };

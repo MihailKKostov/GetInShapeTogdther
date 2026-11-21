@@ -30,10 +30,10 @@ export default function Setup() {
   return (
     <div className="page">
       <div>
-        <h1>SETUP <span className="accent">//</span> 2 MIN</h1>
-        <p className="small muted">Everything on this page is private. You choose later what friends can see.</p>
+        <h1>Welcome! Let's set your goals</h1>
+        <p className="muted">This takes about 2 minutes. Everything here is private — you choose later what friends can see.</p>
       </div>
-      <Panel title="IDENTITY" idx="01">
+      <Panel title="About you">
         <div className="row gap2">
           <Avatar p={profile} size={56} />
           <label className="f grow"><span>Nickname (optional)</span>
@@ -41,17 +41,17 @@ export default function Setup() {
           </label>
         </div>
       </Panel>
-      <Panel title="BODY & GOALS" idx="02">
+      <Panel title="Body & goals">
         <div className="col gap2">
-          <label className="f"><span>Current weight *</span>
+          <label className="f"><span>Current weight</span>
             <NumInput value={current} onChange={(v) => { setCurrent(v); if (v !== '') setS((x) => ({ ...x, startWeightKg: toKg(x.units, v) })); }} unit={weightUnit(s.units)} placeholder={String(Math.round(kgTo(s.units, 80)))} />
           </label>
           <GoalsForm s={s} onChange={setS} weightKg={currentKg} />
         </div>
       </Panel>
       <ErrorLine>{save.error}</ErrorLine>
-      <ActionButton variant="accent" size="lg" block state={save.state} pendingLabel="CALIBRATING" doneLabel="READY" onClick={() => save.run()}>
-        START TRACKING →
+      <ActionButton variant="primary" size="lg" block state={save.state} pendingLabel="Setting up…" doneLabel="All set" onClick={() => save.run()}>
+        Start tracking
       </ActionButton>
     </div>
   );

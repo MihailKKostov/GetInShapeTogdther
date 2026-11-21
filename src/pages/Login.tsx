@@ -8,13 +8,6 @@ import { auth, isConfigured } from '../firebase';
 import { ActionButton, ErrorLine, Seg } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 
-export const LOGO = String.raw`
- ██████  ██ ███████ ████████
-██       ██ ██         ██
-██   ███ ██ ███████    ██
-██    ██ ██      ██    ██
- ██████  ██ ███████    ██   `;
-
 function friendly(msg: string) {
   if (msg.includes('invalid-credential') || msg.includes('wrong-password')) return 'Wrong email or password';
   if (msg.includes('user-not-found')) return 'No account with that email';
@@ -66,23 +59,20 @@ export default function Login() {
   return (
     <div className="login">
       <div className="box col gap2">
-        <pre className="ascii" aria-label="GIST">{LOGO}</pre>
-        <div>
-          <h1>GET IN SHAPE TOGETHER</h1>
-          <p className="small muted">Food log · workouts · progress — with friends who keep you honest.</p>
+        <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 6, marginBottom: 8 }}>
+          <span className="logo"><img src="/favicon.svg" alt="" />GIST</span>
+          <p className="muted" style={{ margin: 0 }}>Get in shape together — track food, workouts and progress with friends.</p>
         </div>
-        {invited && <div className="panel" style={{ padding: 10, borderColor: 'var(--accent)' }}><b className="accent">● YOU'VE BEEN INVITED.</b> <span className="small">Sign in or create an account to accept.</span></div>}
-        {!isConfigured && (
-          <div className="err">Firebase is not configured. Set the VITE_FIREBASE_* variables (see README).</div>
-        )}
+        {invited && <div className="pill accent" style={{ justifyContent: 'center', padding: '8px 12px' }}>You've been invited! Sign in or create an account to accept.</div>}
+        {!isConfigured && <div className="err">Firebase is not configured. Set the VITE_FIREBASE_* variables (see README).</div>}
         <section className="panel">
-          <div className="panel-b col gap2">
-            <ActionButton block size="lg" variant="primary" state={google.state} pendingLabel="OPENING GOOGLE" doneLabel="SIGNED IN" onClick={() => google.run()}>
-              CONTINUE WITH GOOGLE
+          <div className="panel-b col gap2" style={{ paddingTop: 18 }}>
+            <ActionButton block size="lg" state={google.state} pendingLabel="Opening Google…" doneLabel="Signed in" onClick={() => google.run()}>
+              <GoogleMark /> Continue with Google
             </ActionButton>
             <ErrorLine>{google.error && friendly(google.error)}</ErrorLine>
-            <div className="row small muted"><span className="grow" style={{ borderTop: '1px dashed var(--faint)' }} /> OR EMAIL <span className="grow" style={{ borderTop: '1px dashed var(--faint)' }} /></div>
-            <Seg value={mode} onChange={(m) => { setMode(m); setSent(false); }} block options={[{ v: 'in', l: 'SIGN IN' }, { v: 'up', l: 'CREATE' }, { v: 'reset', l: 'RESET' }]} />
+            <div className="row small muted"><span className="grow" style={{ borderTop: '1px solid var(--line)' }} />or<span className="grow" style={{ borderTop: '1px solid var(--line)' }} /></div>
+            <Seg value={mode} onChange={(m) => { setMode(m); setSent(false); }} block options={[{ v: 'in', l: 'Sign in' }, { v: 'up', l: 'Sign up' }, { v: 'reset', l: 'Reset' }]} />
             <form className="col" onSubmit={(e) => { e.preventDefault(); submit.run(); }}>
               {mode === 'up' && <label className="f"><span>Name</span><input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} /></label>}
               <label className="f"><span>Email</span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
@@ -91,14 +81,24 @@ export default function Login() {
               )}
               <ErrorLine>{submit.error}</ErrorLine>
               {sent && <div className="small ok">✓ Reset link sent — check your inbox.</div>}
-              <ActionButton type="submit" block state={submit.state} pendingLabel={mode === 'reset' ? 'SENDING' : 'AUTHENTICATING'} doneLabel={mode === 'reset' ? 'SENT' : 'OK'}>
-                {mode === 'in' ? 'SIGN IN →' : mode === 'up' ? 'CREATE ACCOUNT →' : 'SEND RESET LINK'}
+              <ActionButton type="submit" variant="primary" block state={submit.state} pendingLabel={mode === 'reset' ? 'Sending…' : 'Signing in…'} doneLabel={mode === 'reset' ? 'Sent' : 'Welcome'}>
+                {mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Send reset link'}
               </ActionButton>
             </form>
           </div>
         </section>
-        <p className="small faint">Not a social network. No chats, no comments, no ads. Just progress and emoji.</p>
       </div>
     </div>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+    </svg>
   );
 }

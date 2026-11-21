@@ -24,30 +24,30 @@ export default function Invite() {
     setTimeout(() => nav(`/u/${inv!.createdBy}`), 500);
   }, { minPending: 600 });
 
-  if (inv === undefined) return <div className="page"><Skeleton h={160} label="CHECKING INVITE" /></div>;
-  if (inv === null) return <div className="page"><Empty title="INVITE NOT FOUND">This link is invalid or was revoked. Ask your friend for a new one. <Link to="/">Home →</Link></Empty></div>;
+  if (inv === undefined) return <div className="page"><Skeleton h={220} /></div>;
+  if (inv === null) return <div className="page"><div className="panel"><Empty icon="🤷" title="Invite not found">This link is invalid or was revoked. Ask your friend for a new one. <Link to="/">Go home</Link></Empty></div></div>;
 
   const expired = inv.expiresAt.toMillis() < Date.now();
   const own = inv.createdBy === uid;
   const already = friendIds.includes(inv.createdBy);
   return (
     <div className="page">
-      <Panel title="FRIEND INVITE">
+      <Panel>
         <div className="col gap2" style={{ alignItems: 'center', textAlign: 'center', padding: '12px 0' }}>
-          <Avatar p={{ uid: inv.createdBy, photoURL: inv.inviterPhoto, avatarMode: inv.inviterPhoto ? 'photo' : 'generated', avatarSeed: inv.inviterSeed }} size={84} />
+          <Avatar p={{ uid: inv.createdBy, photoURL: inv.inviterPhoto, avatarMode: inv.inviterPhoto ? 'photo' : 'generated', avatarSeed: inv.inviterSeed, displayName: inv.inviterName }} size={84} />
           <div>
-            <h1 style={{ textTransform: 'none' }}>{inv.inviterName}</h1>
-            <div className="muted small">wants to get in shape together</div>
+            <h1>{inv.inviterName}</h1>
+            <div className="muted">invited you to get in shape together</div>
           </div>
           <p className="small muted" style={{ maxWidth: 420 }}>
-            Friends see each other's posts, reactions and streaks. Weight and food details stay private unless each of you chooses to share them.
+            Friends see each other's posts and streaks. Your weight and food stay private unless you choose to share them.
           </p>
           {own ? <div className="small">This is your own invite link — send it to a friend.</div>
-            : already ? <Link className="btn primary" to={`/u/${inv.createdBy}`}>ALREADY FRIENDS → VIEW PROFILE</Link>
+            : already ? <Link className="btn primary" to={`/u/${inv.createdBy}`}>You're already friends — view profile</Link>
               : expired ? <ErrorLine>This invite has expired. Ask for a new link.</ErrorLine>
                 : (
-                  <ActionButton variant="accent" size="lg" state={accept.state} pendingLabel="CONNECTING" doneLabel="CONNECTED" onClick={() => accept.run()}>
-                    ACCEPT INVITE
+                  <ActionButton variant="primary" size="lg" state={accept.state} pendingLabel="Connecting…" doneLabel="You're friends!" onClick={() => accept.run()}>
+                    Accept invite
                   </ActionButton>
                 )}
           <ErrorLine>{accept.error}</ErrorLine>

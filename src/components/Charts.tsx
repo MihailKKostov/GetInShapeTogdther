@@ -56,7 +56,7 @@ export function LineChart({
   return (
     <div className="col" style={{ gap: 4 }} ref={box}>
       <div className="row between small">
-        <span className="muted">› {sel.label}</span>
+        <span className="muted">{sel.label}</span>
         <b>{fmt(sel.y)} {unit}</b>
       </div>
       <svg className="chart" viewBox={`0 0 ${W} ${h}`} onPointerMove={onMove} onPointerLeave={() => setHover(null)} role="img" aria-label="chart">
@@ -66,18 +66,18 @@ export function LineChart({
             <text x={L - 6} y={sy(t) + 3} textAnchor="end">{fmt(t)}</text>
           </g>
         ))}
-        <line className="axis" x1={L} x2={L} y1={T} y2={h - B} />
-        <line className="axis" x1={L} x2={W - R} y1={h - B} y2={h - B} />
+                <line className="axis" x1={L} x2={W - R} y1={h - B} y2={h - B} />
         {target != null && (
           <g>
             <line className="target" x1={L} x2={W - R} y1={sy(target)} y2={sy(target)} />
-            <text x={W - R} y={sy(target) - 4} textAnchor="end" style={{ fill: 'var(--accent)' }}>TARGET {fmt(target)}</text>
+            <text x={W - R} y={sy(target) - 4} textAnchor="end" className="target-lbl">Goal {fmt(target)}</text>
           </g>
         )}
+        {points.length > 1 && <path className="area" d={`${d}L${sx(points[points.length - 1].x).toFixed(1)} ${h - B}L${sx(points[0].x).toFixed(1)} ${h - B}Z`} />}
         <path className="ln" d={d} />
-        {points.length <= 60 && points.map((p, i) => <rect key={i} className="pt" x={sx(p.x) - 2} y={sy(p.y) - 2} width={4} height={4} />)}
+        {points.length <= 40 && points.map((p, i) => <circle key={i} className="pt" cx={sx(p.x)} cy={sy(p.y)} r={3} />)}
         {hover != null && <line className="hover-line" x1={sx(sel.x)} x2={sx(sel.x)} y1={T} y2={h - B} />}
-        {hover != null && <rect x={sx(sel.x) - 3.5} y={sy(sel.y) - 3.5} width={7} height={7} fill="var(--accent)" />}
+        {hover != null && <circle className="dot" cx={sx(sel.x)} cy={sy(sel.y)} r={5} />}
         <text x={L} y={h - 5}>{first.label}</text>
         <text x={W - R} y={h - 5} textAnchor="end">{last.label}</text>
       </svg>
@@ -106,7 +106,7 @@ export function BarChart({
   return (
     <div className="col" style={{ gap: 4 }} ref={box}>
       <div className="row between small" style={{ minHeight: 18 }}>
-        <span className="muted">› {sel ? sel.label : 'hover / tap a bar'}</span>
+        <span className="muted">{sel ? sel.label : 'Tap a bar for details'}</span>
         <b>{sel ? `${fmt(sel.value)} ${unit}${sel.target ? ` / ${fmt(sel.target)}` : ''}${sel.tip ? ` · ${sel.tip}` : ''}` : ''}</b>
       </div>
       <svg className="chart" viewBox={`0 0 ${W} ${h}`} onPointerLeave={() => setHover(null)} role="img" aria-label="bar chart">
@@ -124,9 +124,9 @@ export function BarChart({
           return (
             <g key={d.key} onPointerEnter={() => setHover(i)} onClick={() => onSelect?.(d.key)} style={{ cursor: onSelect ? 'pointer' : 'default' }}>
               <rect x={L + i * bw} y={T} width={bw} height={h - T - B} fill="transparent" />
-              <rect className={`bar ${d.cls ?? ''}`} x={x} y={y} width={w} height={Math.max(0, h - B - y)} />
+              <rect className={`bar ${d.cls ?? ''}`} x={x} y={y} width={w} height={Math.max(0, h - B - y)} rx={Math.min(4, w / 2)} />
               {d.target != null && <line className="target" x1={x - 1} x2={x + w + 1} y1={sy(d.target)} y2={sy(d.target)} style={{ strokeDasharray: 'none', strokeWidth: 2 }} />}
-              {hover === i && <rect x={L + i * bw} y={T} width={bw} height={h - T - B} fill="none" stroke="var(--accent)" />}
+              {hover === i && <rect x={L + i * bw} y={T} width={bw} height={h - T - B} fill="var(--hover)" opacity={0.5} />}
             </g>
           );
         })}

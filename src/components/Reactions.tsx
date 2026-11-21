@@ -4,9 +4,8 @@ import { reactionsCol, toggleReaction } from '../data/api';
 import type { ReactionDoc } from '../data/types';
 import { useQuery } from '../hooks/useFirestore';
 import { useSession } from '../hooks/useSession';
-import { QUICK_REACTIONS } from '../lib/emojiList';
 import { Emoji, EmojiPicker } from './Emoji';
-import { useToast } from './ui';
+import { Icon, useToast } from './ui';
 
 /**
  * Emoji reactions. Each user owns one doc with their list of emojis.
@@ -65,11 +64,6 @@ export function Reactions({ postId, names }: { postId: string; names: Map<string
           <span key={s.size} className="c bump">{s.size}</span>
         </button>
       ))}
-      {showQuick && QUICK_REACTIONS.map((e) => (
-        <button key={e} type="button" className="rx add" onClick={() => toggle(e)} title="React">
-          <Emoji k={e} />
-        </button>
-      ))}
       <button
         ref={addRef}
         type="button"
@@ -77,7 +71,7 @@ export function Reactions({ postId, names }: { postId: string; names: Map<string
         aria-label="Add reaction"
         onClick={() => setPickerFor((p) => (p ? null : addRef.current))}
       >
-        ☺+
+        <Icon name="smile" size={18} />{showQuick && ' React'}
       </button>
       {pickerFor && (
         <EmojiPicker

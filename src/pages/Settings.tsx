@@ -6,7 +6,7 @@ import { DEFAULT_SHARING, type PrivateSettings, type Sharing } from '../data/typ
 import { GoalsForm } from '../components/GoalsForm';
 import { useLatestWeightKg } from '../components/ActivityForm';
 import {
-  ActionButton, Avatar, ErrorLine, Panel, Seg, Toggle, UploadProgress, useToast,
+  ActionButton, Avatar, ErrorLine, Panel, Seg, Spinner, Toggle, UploadProgress, useToast,
 } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 import { useMe } from '../hooks/useSession';
@@ -50,22 +50,22 @@ function ProfileSection() {
   }, { minPending: 200, doneFor: 10 });
 
   return (
-    <Panel title="PROFILE" idx="01">
+    <Panel title="Profile">
       <div className="col gap2">
         <div className="row gap2 top">
           <Avatar p={profile} size={84} />
           <div className="col grow">
             <span className="flabel">Avatar</span>
             <div className="row wrap" style={{ gap: 4 }}>
-              <ActionButton size="sm" state={upload.state} pendingLabel="UPLOADING" onClick={() => fileRef.current?.click()}>UPLOAD PHOTO</ActionButton>
+              <ActionButton size="sm" state={upload.state} pendingLabel="Uploading…" onClick={() => fileRef.current?.click()}>Upload photo</ActionButton>
               {user?.photoURL && profile.photoURL !== user.photoURL && (
-                <button className="btn sm" onClick={() => updateProfile(uid, { photoURL: user.photoURL, avatarMode: 'photo' })}>USE GOOGLE PHOTO</button>
+                <button className="btn sm" onClick={() => updateProfile(uid, { photoURL: user.photoURL, avatarMode: 'photo' })}>Use Google photo</button>
               )}
               {profile.avatarMode === 'photo'
-                ? <button className="btn sm" onClick={() => setMode.run('generated')}>USE GENERATED</button>
+                ? <button className="btn sm" onClick={() => setMode.run('generated')}>Use initials</button>
                 : <>
-                  <button className="btn sm" onClick={() => setMode.run('generated', true)}>↻ REROLL</button>
-                  {profile.photoURL && <button className="btn sm" onClick={() => setMode.run('photo')}>USE PHOTO</button>}
+                  <button className="btn sm" onClick={() => setMode.run('generated', true)}>Change color</button>
+                  {profile.photoURL && <button className="btn sm" onClick={() => setMode.run('photo')}>Use photo</button>}
                 </>}
             </div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.run(f); e.target.value = ''; }} />
@@ -74,16 +74,16 @@ function ProfileSection() {
           </div>
         </div>
         <div className="fgrid">
-          <label className="f"><span>Nickname · shown instead of "{profile.displayName}"</span>
+          <label className="f"><span>Nickname (optional)</span>
             <input value={nick} maxLength={30} placeholder={profile.displayName} onChange={(e) => setNick(e.target.value)} />
           </label>
-          <label className="f"><span>Status · {status.length}/80</span>
-            <input value={status} maxLength={80} placeholder="e.g. 10k in March" onChange={(e) => setStatus(e.target.value)} />
+          <label className="f"><span>Status ({status.length}/80)</span>
+            <input value={status} maxLength={80} placeholder="e.g. Training for a 10k" onChange={(e) => setStatus(e.target.value)} />
           </label>
         </div>
         <div className="row between">
-          <span className="small muted">Shown as: <b>{displayName({ nickname: nick, displayName: profile.displayName })}</b></span>
-          <ActionButton variant="primary" state={save.state} onClick={() => save.run()} doneLabel="SAVED">SAVE</ActionButton>
+          <span className="small muted">Friends see you as <b>{displayName({ nickname: nick, displayName: profile.displayName })}</b></span>
+          <ActionButton variant="primary" state={save.state} onClick={() => save.run()} doneLabel="Saved">Save</ActionButton>
         </div>
       </div>
     </Panel>
@@ -104,13 +104,12 @@ function GoalsSection() {
   });
   return (
     <Panel
-      title="GOALS & TARGETS"
-      idx="02"
-      right={<span className="vis priv">○ PRIVATE</span>}
+      title="Goals & targets"
+      right={<span className="vis">🔒 Private</span>}
       footer={<>
-        <span className="small muted grow">{dirty ? '● unsaved changes' : 'saved'}</span>
-        {dirty && <button className="btn sm ghost" onClick={() => setS(settings)}>RESET</button>}
-        <ActionButton variant="primary" state={save.state} disabled={!dirty && save.state === 'idle'} onClick={() => save.run()} doneLabel="SAVED">SAVE GOALS</ActionButton>
+        <span className="small muted grow">{dirty ? 'Unsaved changes' : 'All changes saved'}</span>
+        {dirty && <button className="btn sm ghost" onClick={() => setS(settings)}>Discard</button>}
+        <ActionButton variant="primary" state={save.state} disabled={!dirty && save.state === 'idle'} onClick={() => save.run()} doneLabel="Saved">Save goals</ActionButton>
       </>}
     >
       <GoalsForm s={s} onChange={setS} weightKg={weightKg} />
@@ -140,26 +139,26 @@ function PrivacySection() {
     setBusy(k);
     try {
       await setSharing(uid, { ...sharing, [k]: !sharing[k] });
-      toast(`${PRIVACY_ROWS.find((r) => r.k === k)!.l}: ${!sharing[k] ? 'friends can see' : 'private'}`);
+      toast(`${PRIVACY_ROWS.find((r) => r.k === k)!.l}: ${!sharing[k] ? 'visible to friends' : 'private'}`);
     } catch {
       toast('Could not update privacy', 'bad');
     } finally { setBusy(null); }
   };
   return (
-    <Panel title="PRIVACY · WHAT FRIENDS SEE" idx="03" tight>
-      <table className="kv">
-        <tbody>
-          <tr><td><b>Name, avatar, status</b><div className="small muted">always visible to friends</div></td><td className="n"><span className="vis pub">◉ FRIENDS</span></td></tr>
-          <tr><td><b>Streak, days on target, workout totals</b><div className="small muted">the accountability part — always visible to friends</div></td><td className="n"><span className="vis pub">◉ FRIENDS</span></td></tr>
-          {PRIVACY_ROWS.map((r) => (
-            <tr key={r.k}>
-              <td><b>{r.l}</b>{r.d && <div className="small muted">{r.d}</div>}</td>
-              <td className="n"><Toggle on={sharing[r.k]} onChange={() => toggle(r.k)} label={busy === r.k ? '…' : sharing[r.k] ? 'SHARED' : 'PRIVATE'} disabled={busy !== null} /></td>
-            </tr>
-          ))}
-          <tr><td><b>BMI, birth year, sex, email</b><div className="small muted">never shared</div></td><td className="n"><span className="vis priv">○ PRIVATE</span></td></tr>
-        </tbody>
-      </table>
+    <Panel title="Privacy" tight>
+      <p className="small muted" style={{ margin: '0 16px 4px' }}>Choose what your friends can see.</p>
+      <div className="list">
+        <div className="li"><div className="main"><div className="name">Name, photo, status</div><div className="sub">Always visible to friends</div></div><span className="vis pub">👥 Friends</span></div>
+        <div className="li"><div className="main"><div className="name">Streaks & workout totals</div><div className="sub">Always visible to friends</div></div><span className="vis pub">👥 Friends</span></div>
+        {PRIVACY_ROWS.map((r) => (
+          <div className="li" key={r.k}>
+            <div className="main"><div className="name">{r.l}</div>{r.d && <div className="sub">{r.d}</div>}</div>
+            {busy === r.k && <Spinner />}
+            <Toggle on={sharing[r.k]} onChange={() => toggle(r.k)} disabled={busy !== null} />
+          </div>
+        ))}
+        <div className="li"><div className="main"><div className="name">BMI, birth year, sex, email</div><div className="sub">Never shared</div></div><span className="vis">🔒 Private</span></div>
+      </div>
     </Panel>
   );
 }
@@ -173,9 +172,9 @@ export function applyTheme(t: Theme) {
 function AppearanceSection() {
   const [t, setT] = useState<Theme>(() => { try { return (localStorage.getItem('gist.theme') as Theme) || 'auto'; } catch { return 'auto'; } });
   return (
-    <Panel title="APPEARANCE" idx="04">
+    <Panel title="Appearance">
       <Seg<Theme> value={t} onChange={(v) => { setT(v); applyTheme(v); try { localStorage.setItem('gist.theme', v); } catch { /* ignore */ } }}
-        options={[{ v: 'auto', l: 'AUTO' }, { v: 'light', l: 'LIGHT' }, { v: 'dark', l: 'DARK' }]} />
+        options={[{ v: 'auto', l: 'System' }, { v: 'light', l: 'Light' }, { v: 'dark', l: 'Dark' }]} />
     </Panel>
   );
 }
@@ -186,12 +185,12 @@ function AccountSection() {
   const isPassword = user?.providerData.some((p) => p.providerId === 'password');
   const reset = useAction(async () => { await sendPasswordResetEmail(auth, user!.email!); toast('Password reset email sent'); });
   return (
-    <Panel title="ACCOUNT" idx="05">
+    <Panel title="Account">
       <div className="col">
-        <div className="small"><span className="muted">SIGNED IN AS</span> {user?.email} <span className="muted">via {user?.providerData.map((p) => p.providerId.replace('.com', '')).join(', ')}</span></div>
+        <div className="small"><span className="muted">Signed in as</span> {user?.email}</div>
         <div className="row wrap">
-          {isPassword && <ActionButton size="sm" state={reset.state} onClick={() => reset.run()} doneLabel="SENT">RESET PASSWORD</ActionButton>}
-          <button className="btn sm danger" onClick={() => signOut(auth)}>SIGN OUT</button>
+          {isPassword && <ActionButton size="sm" state={reset.state} onClick={() => reset.run()} doneLabel="Email sent">Reset password</ActionButton>}
+          <button className="btn sm danger" onClick={() => signOut(auth)}>Sign out</button>
         </div>
       </div>
     </Panel>

@@ -8,7 +8,7 @@ import { BarChart } from '../components/Charts';
 import { ExerciseTable } from '../components/PostCard';
 import { RouteTrace } from '../components/RouteTrace';
 import {
-  ActionButton, Empty, ErrorLine, Modal, Panel, Seg, Skeleton, useToast,
+  ActionButton, Empty, ErrorLine, Icon, Modal, Panel, Seg, Skeleton, useToast,
 } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 import { useQuery } from '../hooks/useFirestore';
@@ -58,7 +58,7 @@ export default function Activities() {
         type: 'run', title: t.name, startedAt: t.startedAt, durationSec: t.durationSec || 1800,
         distanceM: t.distanceM, elevationM: t.elevationM, points: t.points,
       });
-      toast(`GPX parsed · ${t.points.length} points`, 'info');
+      toast(`Imported ${t.points.length} GPS points`, 'info');
     } catch (e) {
       setGpxErr(e instanceof Error ? e.message : 'Could not read file');
     }
@@ -67,29 +67,29 @@ export default function Activities() {
   return (
     <div className="page">
       <div className="row" style={{ gap: 8 }}>
-        <button className="btn accent lg grow" onClick={() => nav('/move/record')}><span className="rec-dot" style={{ animation: 'none', background: 'currentColor' }} /> RECORD GPS</button>
-        <button className="btn primary lg grow" onClick={() => setForm({})}>+ LOG</button>
-        <button className="btn lg" onClick={() => gpxRef.current?.click()} title="Import a GPX file from your watch or another app">GPX ↑</button>
+        <button className="btn primary lg grow" onClick={() => setForm({})}><Icon name="plus" size={18} stroke={2.4} /> Log exercise</button>
+        <button className="btn lg grow" onClick={() => nav('/move/record')}><span className="rec-dot" style={{ animation: 'none' }} /> Record</button>
+        <button className="btn lg" onClick={() => gpxRef.current?.click()} title="Import a GPX file from your watch or another app"><Icon name="upload" size={18} /> GPX</button>
         <input ref={gpxRef} type="file" accept=".gpx,application/gpx+xml" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importGpx(f); e.target.value = ''; }} />
       </div>
       <ErrorLine>{gpxErr}</ErrorLine>
 
-      <Panel title="THIS WEEK" idx="01" tight>
+      <Panel title="This week">
         <div className="stats c4">
-          <div className="stat"><div className="k">SESSIONS</div><div className="v">{thisWeek.length}</div></div>
-          <div className="stat"><div className="k">TIME</div><div className="v">{fmtDuration(sum(thisWeek, 'durationSec'))}</div></div>
-          <div className="stat"><div className="k">DISTANCE</div><div className="v">{fmtDist(units, sum(thisWeek, 'distanceM'))}</div></div>
-          <div className="stat"><div className="k">KCAL</div><div className="v">{fmtNum(sum(thisWeek, 'kcal'))}</div></div>
+          <div className="stat"><div className="k">Workouts</div><div className="v">{thisWeek.length}</div></div>
+          <div className="stat"><div className="k">Time</div><div className="v">{fmtDuration(sum(thisWeek, 'durationSec'))}</div></div>
+          <div className="stat"><div className="k">Distance</div><div className="v">{fmtDist(units, sum(thisWeek, 'distanceM'))}</div></div>
+          <div className="stat"><div className="k">Burned</div><div className="v">{fmtNum(sum(thisWeek, 'kcal'))}<small> kcal</small></div></div>
         </div>
       </Panel>
 
-      <Panel title="ACTIVE MINUTES / WEEK" idx="02">
+      <Panel title="Active minutes per week">
         {acts.loading ? <Skeleton h={140} /> : <BarChart data={weekly} unit="min" h={140} />}
       </Panel>
 
-      <Panel title="HISTORY" idx="03" tight right={<span className="muted">{acts.data.length}</span>}>
-        {acts.loading ? <div style={{ padding: 10 }}><Skeleton h={120} label="LOADING ACTIVITIES" /></div> : acts.data.length === 0 ? (
-          <div style={{ padding: 10 }}><Empty title="NO ACTIVITIES">Record a GPS session, import a GPX file or log one manually.</Empty></div>
+      <Panel title="History" tight>
+        {acts.loading ? <div style={{ padding: 16 }}><Skeleton h={120} /></div> : acts.data.length === 0 ? (
+          <Empty icon="🏃" title="No exercise yet">Log a workout, record one with GPS, or import a GPX file.</Empty>
         ) : <ActivityList acts={acts.data} onOpen={setOpen} />}
       </Panel>
 
@@ -106,15 +106,20 @@ export function ActivityList({ acts, onOpen }: { acts: Activity[]; onOpen: (a: A
     <div>
       {acts.map((a) => {
         const w = weekStart(a.date);
-        const sep = w !== last ? (last = w, <div key={`w${w}`} className="list-sep"><span>WEEK OF {fmtShort(parseKey(w))}</span></div>) : null;
+        const sep = w !== last ? (last = w, <div key={`w${w}`} className="list-sep">Week of {fmtShort(parseKey(w))}</div>) : null;
         return (
           <div key={a.id}>
             {sep}
-            <button className="food-row" onClick={() => onOpen(a)}>
-              <span className="nm"><span className="src">{ACTIVITY_TYPES[a.type].glyph}</span>{a.title}</span>
-              <span className="kc">{a.distanceM > 0 ? fmtDist(units, a.distanceM) : fmtDuration(a.durationSec)}</span>
-              <span className="sub">{fmtDay(a.date)} · {fmtDuration(a.durationSec)} · {fmtNum(a.kcal)} kcal{a.visibility === 'private' ? ' · PRIVATE' : ''}</span>
-              <span className="sub right">{a.distanceM > 0 ? (a.type === 'ride' ? fmtSpeed(units, a.distanceM, a.durationSec) : fmtPace(units, a.distanceM, a.durationSec)) : ''}</span>
+            <button className="li" onClick={() => onOpen(a)}>
+              <span style={{ fontSize: 22, width: 32, textAlign: 'center' }}>{ACTIVITY_TYPES[a.type].glyph}</span>
+              <div className="main">
+                <div className="name">{a.title}</div>
+                <div className="sub">{fmtDay(a.date)} · {fmtDuration(a.durationSec)} · {fmtNum(a.kcal)} kcal{a.visibility === 'private' ? ' · 🔒' : ''}</div>
+              </div>
+              <div className="end">
+                <b>{a.distanceM > 0 ? fmtDist(units, a.distanceM) : fmtDuration(a.durationSec)}</b>
+                <div className="small muted">{a.distanceM > 0 ? (a.type === 'ride' ? fmtSpeed(units, a.distanceM, a.durationSec) : fmtPace(units, a.distanceM, a.durationSec)) : ''}</div>
+              </div>
             </button>
           </div>
         );
@@ -133,29 +138,29 @@ export function ActivityDetail({ a, onClose, editable }: { a: Activity; onClose:
   const del = useAction(async () => { await deleteActivity(uid, a); return true; });
   const meta = ACTIVITY_TYPES[a.type];
   return (
-    <Modal title={`${meta.glyph} · ${fmtDay(a.date)}`} onClose={onClose}>
-      {editable ? <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" /> : <h2 style={{ textTransform: 'none' }}>{a.title}</h2>}
-      <div className="stats c3" style={{ border: '1px solid var(--line)', borderRight: 0, borderBottom: 0 }}>
-        <div className="stat"><div className="k">TIME</div><div className="v">{fmtDuration(a.durationSec)}</div></div>
-        {a.distanceM > 0 && <div className="stat"><div className="k">DISTANCE</div><div className="v">{fmtDist(units, a.distanceM)}</div></div>}
-        {a.distanceM > 0 && <div className="stat"><div className="k">{a.type === 'ride' ? 'SPEED' : 'PACE'}</div><div className="v">{a.type === 'ride' ? fmtSpeed(units, a.distanceM, a.durationSec) : fmtPace(units, a.distanceM, a.durationSec)}</div></div>}
-        {a.elevationM > 0 && <div className="stat"><div className="k">ELEV GAIN</div><div className="v">{fmtElev(units, a.elevationM)}</div></div>}
-        <div className="stat"><div className="k">KCAL</div><div className="v">{fmtNum(a.kcal)}</div></div>
-        <div className="stat"><div className="k">START</div><div className="v" style={{ fontSize: 14 }}>{a.startedAt?.toDate?.().toLocaleString()}</div></div>
+    <Modal title={`${meta.glyph} ${meta.label} · ${fmtDay(a.date)}`} onClose={onClose}>
+      {editable ? <label className="f"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label> : <h2>{a.title}</h2>}
+      <div className="stats c3 m2">
+        <div className="stat"><div className="k">Time</div><div className="v">{fmtDuration(a.durationSec)}</div></div>
+        {a.distanceM > 0 && <div className="stat"><div className="k">Distance</div><div className="v">{fmtDist(units, a.distanceM)}</div></div>}
+        {a.distanceM > 0 && <div className="stat"><div className="k">{a.type === 'ride' ? 'Speed' : 'Pace'}</div><div className="v">{a.type === 'ride' ? fmtSpeed(units, a.distanceM, a.durationSec) : fmtPace(units, a.distanceM, a.durationSec)}</div></div>}
+        {a.elevationM > 0 && <div className="stat"><div className="k">Elevation</div><div className="v">{fmtElev(units, a.elevationM)}</div></div>}
+        <div className="stat"><div className="k">Burned</div><div className="v">{fmtNum(a.kcal)}<small> kcal</small></div></div>
+        <div className="stat"><div className="k">Started</div><div className="v" style={{ fontSize: 14 }}>{a.startedAt?.toDate?.().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>
       </div>
       {a.route?.length > 3 && <RouteTrace route={a.route} h={240} />}
       {a.exercises?.length > 0 && <ExerciseTable rows={a.exercises} />}
       {editable ? (
         <>
           <label className="f"><span>Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
-          <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '◉ FRIENDS' }, { v: 'private', l: '○ ONLY ME' }]} />
+          <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '👥 Friends' }, { v: 'private', l: '🔒 Only me' }]} />
           <ErrorLine>{save.error || del.error}</ErrorLine>
           <div className="row">
-            <ActionButton variant="danger" state={del.state} pendingLabel="DELETING" onClick={async () => {
-              if (confirm('Delete this activity and its feed post?') && await del.run()) { toast('Activity deleted'); onClose(); }
-            }}>DELETE</ActionButton>
+            <ActionButton variant="danger" state={del.state} pendingLabel="Deleting…" onClick={async () => {
+              if (confirm('Delete this workout and its feed post?') && await del.run()) { toast('Workout deleted'); onClose(); }
+            }}>Delete</ActionButton>
             <span className="grow" />
-            <ActionButton variant="primary" state={save.state} onClick={() => save.run()} doneLabel="SAVED">SAVE</ActionButton>
+            <ActionButton variant="primary" state={save.state} onClick={() => save.run()} doneLabel="Saved">Save</ActionButton>
           </div>
         </>
       ) : a.notes ? <p className="post-text">{a.notes}</p> : null}

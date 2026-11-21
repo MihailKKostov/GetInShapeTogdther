@@ -43,53 +43,51 @@ export default function Friends() {
 
   return (
     <div className="page">
-      <Panel title="INVITE A FRIEND" idx="01">
+      <Panel title="Invite friends">
         <div className="col">
           <p className="small muted" style={{ margin: 0 }}>
-            Create a link and send it to a friend. When they sign in with it you become friends — you'll see each other's posts and shared stats.
-            Links work for anyone who has them for 14 days, so share them privately.
+            Send a link to a friend. When they sign up with it, you'll see each other's updates. Links expire after 14 days.
           </p>
-          <ActionButton variant="accent" size="lg" block state={create.state} pendingLabel="GENERATING LINK" doneLabel="LINK READY" onClick={() => create.run()}>
-            + CREATE INVITE LINK
+          <ActionButton variant="primary" size="lg" block state={create.state} pendingLabel="Creating link…" doneLabel="Link ready" onClick={() => create.run()}>
+            Create invite link
           </ActionButton>
           {fresh && (
-            <div className="row" style={{ border: '1px solid var(--accent)', padding: 6 }}>
-              <code className="grow trunc small">{inviteUrl(fresh)}</code>
-              <button className="btn sm" onClick={() => copy(fresh)}>COPY</button>
+            <div className="row" style={{ background: 'var(--primary-soft)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
+              <code className="grow trunc small invite-link">{inviteUrl(fresh)}</code>
+              <button className="btn sm" onClick={() => copy(fresh)}>Copy</button>
             </div>
           )}
         </div>
       </Panel>
 
-      <Panel title="FRIENDS" idx="02" tight right={<span className="muted">{friendIds.length}</span>}>
-        {friendsLoading ? <div style={{ padding: 10 }}><Skeleton h={80} /></div> : friendIds.length === 0 ? (
-          <div style={{ padding: 10 }}><Empty title="NO FRIENDS YET">Create an invite link above.</Empty></div>
+      <Panel title={`Friends${friendIds.length ? ` (${friendIds.length})` : ''}`} tight>
+        {friendsLoading ? <div style={{ padding: 16 }}><Skeleton h={80} /></div> : friendIds.length === 0 ? (
+          <Empty icon="👋" title="No friends yet">Create an invite link above and send it to someone.</Empty>
         ) : (
-          <>
-            <div className="list-sep"><span>NAME / STATUS</span><span>STREAK · WORKOUTS</span></div>
+          <div className="list">
             {sorted.map((id) => {
               const p = profiles.get(id);
               return (
-                <Link key={id} to={`/u/${id}`} className="frow">
-                  <Avatar p={p} size={40} />
-                  <div className="col" style={{ gap: 0, minWidth: 0 }}>
-                    <b className="trunc">{p ? displayName(p) : '…'}</b>
-                    <span className="small muted trunc">{p?.status ? `> ${p.status}` : `active ${relTime(p?.lastActiveAt?.toDate?.()).toLowerCase()}`}</span>
+                <Link key={id} to={`/u/${id}`} className="li">
+                  <Avatar p={p} size={44} />
+                  <div className="main">
+                    <div className="name">{p ? displayName(p) : '…'}</div>
+                    <div className="sub">{p?.status || `Active ${relTime(p?.lastActiveAt?.toDate?.())}`}</div>
                   </div>
-                  <div className="right">
-                    <b>{p?.stats?.streak ?? 0}d</b>
-                    <div className="small muted">{p?.stats?.workouts ?? 0} wk</div>
+                  <div className="end">
+                    <b>🔥 {p?.stats?.streak ?? 0}</b>
+                    <div className="small muted">{p?.stats?.workouts ?? 0} workouts</div>
                   </div>
                 </Link>
               );
             })}
-          </>
+          </div>
         )}
       </Panel>
 
       {activeInvites.length > 0 && (
-        <Panel title="OPEN INVITE LINKS" idx="03" tight>
-          {activeInvites.map((i) => <InviteRow key={i.id} inv={i} onCopy={() => copy(i.id)} />)}
+        <Panel title="Open invite links" tight>
+          <div className="list">{activeInvites.map((i) => <InviteRow key={i.id} inv={i} onCopy={() => copy(i.id)} />)}</div>
         </Panel>
       )}
 
@@ -102,13 +100,13 @@ function InviteRow({ inv, onCopy }: { inv: Invite; onCopy: () => void }) {
   const toast = useToast();
   const del = useAction(async () => { await revokeInvite(inv.id); toast('Invite revoked'); });
   return (
-    <div className="frow" style={{ gridTemplateColumns: '1fr auto auto' }}>
-      <div className="col" style={{ gap: 0, minWidth: 0 }}>
-        <code className="small trunc">…/invite/{inv.id.slice(0, 8)}…</code>
-        <span className="small muted">expires {fmtShort(inv.expiresAt.toDate())}</span>
+    <div className="li">
+      <div className="main">
+        <div className="name small">…/invite/{inv.id.slice(0, 8)}…</div>
+        <div className="sub">Expires {fmtShort(inv.expiresAt.toDate())}</div>
       </div>
-      <button className="btn sm" onClick={onCopy}>COPY</button>
-      <ActionButton size="sm" variant="danger" state={del.state} onClick={() => del.run()} pendingLabel="…">REVOKE</ActionButton>
+      <button className="btn sm" onClick={onCopy}>Copy</button>
+      <ActionButton size="sm" variant="danger" state={del.state} onClick={() => del.run()} pendingLabel="Revoking…">Revoke</ActionButton>
     </div>
   );
 }
@@ -116,9 +114,9 @@ function InviteRow({ inv, onCopy }: { inv: Invite; onCopy: () => void }) {
 function ManageFriends({ ids, names }: { ids: string[]; names: Map<string, string> }) {
   const [open, setOpen] = useState(false);
   return (
-    <Panel title="MANAGE" idx="04" tight right={<button className="btn ghost sm" onClick={() => setOpen((o) => !o)}>{open ? 'HIDE' : 'SHOW'}</button>}>
-      {open && ids.map((id) => <RemoveRow key={id} id={id} name={names.get(id) ?? id} />)}
-      {!open && <div className="small muted" style={{ padding: '8px 12px' }}>Remove friends. They won't be notified.</div>}
+    <Panel title="Manage friends" tight right={<button className="btn ghost sm" onClick={() => setOpen((o) => !o)}>{open ? 'Hide' : 'Show'}</button>}>
+      {open ? <div className="list">{ids.map((id) => <RemoveRow key={id} id={id} name={names.get(id) ?? id} />)}</div>
+        : <div className="small muted" style={{ padding: '4px 16px 10px' }}>Remove someone from your friends. They won't be notified.</div>}
     </Panel>
   );
 }
@@ -128,9 +126,9 @@ function RemoveRow({ id, name }: { id: string; name: string }) {
   const toast = useToast();
   const rm = useAction(async () => { await removeFriend(uid, id); toast(`Removed ${name}`); });
   return (
-    <div className="frow" style={{ gridTemplateColumns: '1fr auto' }}>
-      <span className="trunc">{name}</span>
-      <ActionButton size="sm" variant="danger" state={rm.state} pendingLabel="REMOVING" onClick={() => confirm(`Remove ${name} from friends?`) && rm.run()}>REMOVE</ActionButton>
+    <div className="li">
+      <span className="main trunc">{name}</span>
+      <ActionButton size="sm" variant="danger" state={rm.state} pendingLabel="Removing…" onClick={() => confirm(`Remove ${name} from friends?`) && rm.run()}>Remove</ActionButton>
     </div>
   );
 }

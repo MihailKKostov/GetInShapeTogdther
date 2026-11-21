@@ -10,7 +10,8 @@ import { lookupBarcode, searchOpenFoodFacts } from '../lib/foodSearch';
 import { searchGeneric } from '../lib/genericFoods';
 import { NUTRIENT_LABELS, scaleNutrients } from '../lib/nutrition';
 import { fmtNum } from '../lib/units';
-import { ActionButton, Empty, ErrorLine, Modal, NumInput, Seg, Skeleton, Spinner, useToast } from './ui';
+import { ActionButton, Empty, ErrorLine, Icon, Modal, NumInput, Seg, Skeleton, Spinner, useToast } from './ui';
+import { NutrientSummary } from './NutrientSummary';
 
 type Tab = 'search' | 'recent' | 'mine' | 'quick' | 'scan';
 
@@ -19,7 +20,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
   const [picked, setPicked] = useState<Food | null>(null);
   const hasScanner = typeof window !== 'undefined' && 'BarcodeDetector' in window;
   return (
-    <Modal title={`ADD TO ${meal.toUpperCase()} · ${date}`} onClose={onClose}>
+    <Modal title={`Add to ${meal}`} onClose={onClose}>
       {picked ? (
         <AmountStep food={picked} date={date} meal={meal} onBack={() => setPicked(null)} onDone={onClose} />
       ) : (
@@ -27,7 +28,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
           <div className="tabs">
             {(['search', 'recent', 'mine', 'quick', ...(hasScanner ? ['scan'] : [])] as Tab[]).map((t) => (
               <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-                {t === 'mine' ? 'MY FOODS' : t === 'quick' ? 'QUICK ADD' : t.toUpperCase()}
+                {t === 'mine' ? 'My foods' : t === 'quick' ? 'Quick add' : t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
@@ -45,11 +46,15 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
 function FoodRow({ f, onPick }: { f: Food; onPick: (f: Food) => void }) {
   const serving = f.servingG ? scaleNutrients(f.per100, f.servingG) : null;
   return (
-    <button type="button" className="food-row" onClick={() => onPick(f)}>
-      <span className="nm"><span className="src">{f.source === 'off' ? 'OFF' : f.source === 'generic' ? 'REF' : f.source === 'custom' ? 'MY' : 'QCK'}</span>{f.name}</span>
-      <span className="kc">{fmtNum(serving ? serving.kcal : f.per100.kcal)} <small className="muted">kcal</small></span>
-      <span className="sub">{f.brand ? `${f.brand} · ` : ''}{serving ? `${f.servingLabel ?? ''} (${fmtNum(f.servingG)} g)` : 'per 100 g'}</span>
-      <span className="sub right">P{fmtNum((serving ?? f.per100).protein)} C{fmtNum((serving ?? f.per100).carbs)} F{fmtNum((serving ?? f.per100).fat)}</span>
+    <button type="button" className="li" onClick={() => onPick(f)}>
+      <div className="main">
+        <div className="name"><span className={`src ${f.source === 'off' ? 'off' : f.source === 'generic' ? 'ref' : 'my'}`}>{f.source === 'off' ? 'OFF' : f.source === 'generic' ? 'REF' : 'MY'}</span>{f.name}</div>
+        <div className="sub">{f.brand ? `${f.brand} · ` : ''}{serving ? `${f.servingLabel ?? ''} (${fmtNum(f.servingG)} g)` : 'per 100 g'}</div>
+      </div>
+      <div className="end">
+        <b>{fmtNum(serving ? serving.kcal : f.per100.kcal)}</b> <span className="small muted">kcal</span>
+        <div className="small muted">P {fmtNum((serving ?? f.per100).protein)} · C {fmtNum((serving ?? f.per100).carbs)} · F {fmtNum((serving ?? f.per100).fat)}</div>
+      </div>
     </button>
   );
 }
@@ -84,21 +89,21 @@ function SearchTab({ onPick }: { onPick: (f: Food) => void }) {
 
   return (
     <div className="col">
-      <input autoFocus placeholder="search foods — e.g. greek yogurt, oats" value={q} onChange={(e) => setQ(e.target.value)} />
-      {!term && <p className="small muted">REF = reference values for whole foods. OFF = Open Food Facts (packaged, crowd-sourced). MY = your custom foods.</p>}
+      <input autoFocus placeholder="Search foods, e.g. greek yogurt" value={q} onChange={(e) => setQ(e.target.value)} />
+      {!term && <p className="small muted" style={{ margin: 0 }}>Search common foods, your own foods, and packaged products from Open Food Facts.</p>}
       {local.length > 0 && (
         <div className="panel">
-          <div className="list-sep"><span>REFERENCE + MY FOODS</span><span>{local.length}</span></div>
-          {local.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}
+          <div className="list-sep">Common & my foods</div>
+          <div className="list">{local.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}</div>
         </div>
       )}
       {term.length >= 3 && (
         <div className="panel">
-          <div className="list-sep"><span>OPEN FOOD FACTS</span><span>{loading ? <><Spinner /> SEARCHING</> : remote.length}</span></div>
-          {loading && remote.length === 0 && <div style={{ padding: 8 }}><Skeleton h={80} label="QUERYING DATABASE" /></div>}
-          {remote.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}
-          {!loading && !err && remote.length === 0 && <div className="small muted" style={{ padding: 10 }}>No packaged foods matched.</div>}
-          {err && <div style={{ padding: 10 }}><ErrorLine>{err}</ErrorLine></div>}
+          <div className="list-sep row">Packaged foods {loading && <Spinner />}</div>
+          {loading && remote.length === 0 && <div style={{ padding: '4px 16px 12px' }}><Skeleton h={64} /></div>}
+          <div className="list">{remote.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}</div>
+          {!loading && !err && remote.length === 0 && <div className="small muted" style={{ padding: '4px 16px 12px' }}>No packaged foods matched.</div>}
+          {err && <div style={{ padding: '4px 16px 12px' }}><ErrorLine>{err}</ErrorLine></div>}
         </div>
       )}
     </div>
@@ -110,8 +115,8 @@ function RecentTab({ onPick }: { onPick: (f: Food) => void }) {
   const rec = useDoc<{ items: Food[] }>(recentsRef(uid), `rec:${uid}`);
   if (rec.loading) return <Skeleton h={120} />;
   const items = rec.data?.items ?? [];
-  if (!items.length) return <Empty title="NO RECENT FOODS">Foods you log appear here for one-tap re-adding.</Empty>;
-  return <div className="panel">{items.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}</div>;
+  if (!items.length) return <Empty icon="🕘" title="No recent foods">Foods you log show up here for quick re-adding.</Empty>;
+  return <div className="panel list">{items.map((f) => <FoodRow key={f.id} f={f} onPick={onPick} />)}</div>;
 }
 
 function MyFoodsTab({ onPick }: { onPick: (f: Food) => void }) {
@@ -122,19 +127,19 @@ function MyFoodsTab({ onPick }: { onPick: (f: Food) => void }) {
   if (creating) return <CustomFoodForm onDone={(f) => { setCreating(false); if (f) onPick(f); }} />;
   return (
     <div className="col">
-      <button className="btn block" onClick={() => setCreating(true)}>+ CREATE CUSTOM FOOD</button>
+      <button className="btn soft block" onClick={() => setCreating(true)}>+ Create custom food</button>
       {foods.loading ? <Skeleton h={100} /> : foods.data.length === 0 ? (
-        <Empty title="NO CUSTOM FOODS">Create foods for home recipes or products missing from the database.</Empty>
+        <Empty icon="🥣" title="No custom foods">Create foods for home recipes or products missing from the database.</Empty>
       ) : (
-        <div className="panel">
+        <div className="panel list">
           {foods.data.map((f) => (
-            <div key={f.id} className="row" style={{ borderBottom: '1px solid var(--rule)' }}>
+            <div key={f.id} className="row" style={{ paddingRight: 8 }}>
               <div className="grow"><FoodRow f={f} onPick={onPick} /></div>
               <button
-                className="btn ghost sm danger"
+                className="icon-btn"
                 aria-label={`Delete ${f.name}`}
                 onClick={async () => { if (confirm(`Delete ${f.name}?`)) { await deleteCustomFood(uid, f.id); toast('Food deleted'); } }}
-              >✕</button>
+              ><Icon name="close" size={18} /></button>
             </div>
           ))}
         </div>
@@ -186,10 +191,10 @@ function CustomFoodForm({ onDone }: { onDone: (f: Food | null) => void }) {
       </div>
       <ErrorLine>{save.error}</ErrorLine>
       <div className="row">
-        <button className="btn" onClick={() => onDone(null)}>← BACK</button>
+        <button className="btn" onClick={() => onDone(null)}>Back</button>
         <span className="grow" />
         <ActionButton variant="primary" state={save.state} onClick={async () => { const f = await save.run(); if (f) onDone(f); }}>
-          SAVE FOOD
+          Save food
         </ActionButton>
       </div>
     </div>
@@ -224,22 +229,22 @@ function QuickAdd({ date, meal, onDone }: { date: string; meal: Meal; onDone: ()
       <ErrorLine>{add.error}</ErrorLine>
       <ActionButton variant="primary" block state={add.state} onClick={async () => {
         if (await add.run()) { toast(`Added ${kcal} kcal to ${meal}`); onDone(); }
-      }}>ADD {kcal || 0} KCAL</ActionButton>
+      }}>Add {kcal || 0} kcal</ActionButton>
     </div>
   );
 }
 
 function ScanTab({ onPick }: { onPick: (f: Food) => void }) {
   const video = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState('STARTING CAMERA');
+  const [status, setStatus] = useState('Starting camera…');
   const [code, setCode] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const lookup = async (c: string) => {
-    setStatus(`LOOKING UP ${c}`);
+    setStatus(`Looking up ${c}…`);
     setErr(null);
     const f = await lookupBarcode(c).catch(() => null);
     if (f) onPick(f);
-    else { setErr(`No product found for ${c}`); setStatus('SCANNING'); }
+    else { setErr(`No product found for ${c}`); setStatus('Point the camera at a barcode'); }
   };
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -250,7 +255,7 @@ function ScanTab({ onPick }: { onPick: (f: Food) => void }) {
         if (!video.current) return;
         video.current.srcObject = stream;
         await video.current.play();
-        setStatus('SCANNING');
+        setStatus('Point the camera at a barcode');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const det = new (window as any).BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
         while (!stop) {
@@ -259,7 +264,7 @@ function ScanTab({ onPick }: { onPick: (f: Food) => void }) {
           await new Promise((res) => setTimeout(res, 250));
         }
       } catch {
-        setStatus('CAMERA UNAVAILABLE');
+        setStatus('Camera unavailable');
       }
     })();
     return () => { stop = true; stream?.getTracks().forEach((t) => t.stop()); };
@@ -267,12 +272,12 @@ function ScanTab({ onPick }: { onPick: (f: Food) => void }) {
   }, []);
   return (
     <div className="col">
-      <video ref={video} playsInline muted style={{ width: '100%', border: '1px solid var(--line)', background: '#000', aspectRatio: '4/3', objectFit: 'cover' }} />
-      <div className="small"><Spinner /> {status}</div>
+      <video ref={video} playsInline muted style={{ width: '100%', borderRadius: 12, background: '#000', aspectRatio: '4/3', objectFit: 'cover' }} />
+      <div className="small row muted"><Spinner /> {status}</div>
       <ErrorLine>{err}</ErrorLine>
       <div className="row">
-        <input placeholder="or type barcode" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
-        <button className="btn" onClick={() => code && lookup(code)}>LOOKUP</button>
+        <input placeholder="Or type the barcode" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
+        <button className="btn" onClick={() => code && lookup(code)}>Look up</button>
       </div>
     </div>
   );
@@ -295,12 +300,12 @@ function AmountStep({ food, date, meal, onBack, onDone }: { food: Food; date: st
   return (
     <div className="col">
       <div>
-        <h2 style={{ textTransform: 'none' }}>{food.name}</h2>
+        <h2>{food.name}</h2>
         {food.brand && <div className="small muted">{food.brand}</div>}
       </div>
       {hasServing && (
         <Seg value={mode} onChange={(m) => { setMode(m); setQty(m === 'serving' ? 1 : Math.round(food.servingG ?? 100)); }}
-          options={[{ v: 'serving', l: `SERVINGS · ${food.servingLabel ?? ''} ${fmtNum(food.servingG)}g` }, { v: 'g', l: 'GRAMS' }]} block />
+          options={[{ v: 'serving', l: `Servings (${food.servingLabel ?? ''} · ${fmtNum(food.servingG)} g)` }, { v: 'g', l: 'Grams' }]} block />
       )}
       <label className="f">
         <span>{mode === 'serving' ? 'Number of servings' : 'Amount'}</span>
@@ -311,26 +316,27 @@ function AmountStep({ food, date, meal, onBack, onDone }: { food: Food; date: st
           <button key={v} className={`btn sm ${qty === v ? 'on' : ''}`} onClick={() => setQty(v)}>{v}{mode === 'g' ? 'g' : '×'}</button>
         ))}
       </div>
-      <table className="kv" style={{ border: '1px solid var(--line)' }}>
+      <NutrientSummary n={n} />
+      <table className="kv">
         <tbody>
-          {(Object.keys(NUTRIENT_LABELS) as (keyof Nutrients)[]).filter((k) => n[k] != null).map((k) => (
+          {(['fiber', 'sugar', 'satFat', 'sodiumMg'] as (keyof Nutrients)[]).filter((k) => n[k] != null).map((k) => (
             <tr key={k}>
               <th>{NUTRIENT_LABELS[k].label}</th>
-              <td className="n"><b>{fmtNum(n[k], k === 'kcal' || k === 'sodiumMg' ? 0 : 1)}</b> {NUTRIENT_LABELS[k].unit}</td>
+              <td className="n"><b>{fmtNum(n[k], k === 'sodiumMg' ? 0 : 1)}</b> {NUTRIENT_LABELS[k].unit}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <ErrorLine>{add.error}</ErrorLine>
       <div className="row">
-        <button className="btn" onClick={onBack}>← BACK</button>
+        <button className="btn" onClick={onBack}>Back</button>
         <span className="grow" />
         <ActionButton variant="primary" state={add.state} onClick={async () => {
           if (await add.run()) {
             toast(`${food.name} → ${meal}`);
             onDone();
           }
-        }}>ADD · {fmtNum(n.kcal)} KCAL</ActionButton>
+        }}>Add · {fmtNum(n.kcal)} kcal</ActionButton>
       </div>
     </div>
   );

@@ -9,15 +9,15 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 | Area | What's there |
 | --- | --- |
 | **Food log** (`/log`) | Search reference whole foods plus [Open Food Facts](https://world.openfoodfacts.org) (packaged foods, no API key needed). Barcode scan where the browser supports `BarcodeDetector`. Custom foods, recent foods, quick add, copy a meal from yesterday. Per-day energy budget (goal + exercise), macros, fiber, sodium, water, weigh-in. |
-| **Closing a day** | Locks the day and checks it against your "on target" band (default: up to 15 % under / 5 % over budget). That updates your streak and can post a summary to the feed (kcal, macros, streak — never the food list). |
+| **Completing a day** | "Mark day as complete" locks the day and checks it against your "on target" band (default: up to 15 % under / 5 % over budget). That updates your streak and can post a summary to the feed (kcal, macros, streak — never the food list). |
 | **Activities** (`/move`) | Manual log (run, ride, walk, hike, swim, row, strength with sets×reps×load, HIIT, yoga, sport). In-browser GPS recording with a wake lock and crash recovery. GPX import. Pace, speed and elevation. Calorie estimate from MET values. Routes are drawn as schematic traces, not on map tiles. |
 | **Progress photos** | Post up to 4 photos and mark them as progress, optionally with your weight at that time. They build a timeline on your profile with a before/after compare view. Photos are resized and stripped of metadata (including GPS) before upload. |
 | **Profile** (`/me`, `/u/:id`) | Streak, days on target, workouts, distance, body stats, weight chart with target line, 30-day calorie bars, a 12-week on-target calendar, weekly active minutes, recent activities, progress photos. |
-| **Privacy** | Each private field has a `◉ FRIENDS` / `○ PRIVATE` badge on your own profile; tap it to switch. All toggles are also in Settings. |
+| **Privacy** | Each private field has a 👥 Friends / 🔒 Private badge on your own profile; tap it to switch. All toggles are also in Settings. |
 | **Friends** | Invite by link (expires after 14 days, can be revoked). Accepting the link makes you friends both ways. Either person can remove the friendship. |
 | **Feed** | Posts from you and your friends only. Filters: all / friends / me / progress. |
 | **Reactions** | Any number of emojis per post, toggled on and off. Custom emojis work like Slack's: upload an image or make a text sticker. |
-| **Profile basics** | Optional nickname (defaults to your name), Google photo / uploaded photo / generated pixel avatar, and a status of up to 80 characters. |
+| **Profile basics** | Optional nickname (defaults to your name), Google photo / uploaded photo / initials avatar, and a status of up to 80 characters. |
 
 ### What friends can see
 
@@ -34,10 +34,11 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 
 The Firestore security rules enforce these settings on the server, not just in the UI. Data a friend isn't allowed to read is never sent to their browser. One exception: Storage download URLs act as bearer links, so anyone who has a photo's URL can open it.
 
-## UI principles
+## UI
 
-- **Purposeful motion:** every async button goes through *pending* (striped background and spinner, held for at least ~380 ms so the tap is visibly acknowledged) → *done* (green fill sweep) or *error* (shake). Uploads show real progress bars. Skeletons are hatched wireframe boxes labelled with what is loading. Toasts confirm what just happened. Reactions update instantly with a count bump. Motion is reduced under `prefers-reduced-motion`.
-- **Raw aesthetic:** JetBrains Mono everywhere, a background grid, 1 px rules, square corners and no shadows except on overlays. One signal colour (orange) plus green / amber / red for status. Numbered panels, key–value tables and hand-drawn SVG charts. Light and dark themes.
+The UI is clean and card-based, in the style of nutrition apps like Cronometer. It uses the Inter font, white cards on a light grey background, and one orange accent. Macros have their own colours: protein green, carbs blue, fat red. The diary has rings for consumed / exercise / remaining calories and bars for targets. Light and dark themes are supported.
+
+Feedback stays visible but quiet. Buttons show a spinner while saving and a brief ✓ when done. Uploads show a progress bar, content loads with shimmer placeholders, and small toasts confirm actions. Motion is reduced under `prefers-reduced-motion`.
 
 ## Firebase setup (one-time)
 
@@ -68,7 +69,7 @@ The workflow is `.github/workflows/deploy.yml`:
 - **Push to `main`:** deploys Hosting, Firestore rules and indexes, and Storage rules.
 - **PRs from this repo:** deploys a preview channel (expires after 7 days) and posts its URL on the PR. Google sign-in on preview URLs only works if you add that domain to Auth's authorized domains; email sign-in works everywhere.
 
-Then share `https://<project-id>.web.app` with your friends. Each person signs in, completes the 2-minute setup, and sends invite links from the **FRIENDS** tab.
+Then share `https://<project-id>.web.app` with your friends. Each person signs in, completes the 2-minute setup, and sends invite links from the **Friends** tab.
 
 ## Local development
 

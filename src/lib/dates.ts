@@ -20,19 +20,16 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((parseKey(b).getTime() - parseKey(a).getTime()) / 86400000);
 }
 
-const WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const MO = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
 export function fmtDay(key: string): string {
-  const d = parseKey(key);
   const today = dateKey();
-  if (key === today) return 'TODAY';
-  if (key === addDays(today, -1)) return 'YESTERDAY';
-  return `${WD[d.getDay()]} ${pad(d.getDate())} ${MO[d.getMonth()]}`;
+  if (key === today) return 'Today';
+  if (key === addDays(today, -1)) return 'Yesterday';
+  return parseKey(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function fmtShort(d: Date): string {
-  return `${pad(d.getDate())} ${MO[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
 export function fmtTime(d: Date): string {
@@ -40,12 +37,12 @@ export function fmtTime(d: Date): string {
 }
 
 export function relTime(d: Date | null | undefined): string {
-  if (!d) return 'NOW';
+  if (!d) return 'just now';
   const s = Math.round((Date.now() - d.getTime()) / 1000);
-  if (s < 45) return 'NOW';
-  if (s < 3600) return `${Math.round(s / 60)}M AGO`;
-  if (s < 86400) return `${Math.round(s / 3600)}H AGO`;
-  if (s < 86400 * 7) return `${Math.round(s / 86400)}D AGO`;
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  if (s < 86400 * 7) return `${Math.round(s / 86400)}d ago`;
   return fmtShort(d);
 }
 

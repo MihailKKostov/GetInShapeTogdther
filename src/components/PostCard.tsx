@@ -9,7 +9,17 @@ import { ACTIVITY_TYPES } from '../lib/nutrition';
 import { fmtDist, fmtElev, fmtNum, fmtPace, fmtSpeed, fmtWeight } from '../lib/units';
 import { Reactions } from './Reactions';
 import { RouteTrace } from './RouteTrace';
-import { ActionButton, Avatar, Lightbox, Meter, useToast } from './ui';
+import { ActionButton, Avatar, Icon, Lightbox, Meter, useToast } from './ui';
+
+function action(post: Post, mine: boolean): string {
+  const their = mine ? 'your' : 'their';
+  switch (post.kind) {
+    case 'day': return post.day?.onTarget ? `hit ${their} nutrition target` : `completed ${their} food diary`;
+    case 'activity': return `logged a ${ACTIVITY_TYPES[post.activity?.type ?? 'other'].label.toLowerCase()}`;
+    case 'photo': return post.progress ? 'shared a progress photo' : 'shared a photo';
+    default: return 'posted an update';
+  }
+}
 
 export function PostCard({ post, author, names, isNew }: {
   post: Post; author: UserProfile | undefined; names: Map<string, string>; isNew?: boolean;
@@ -26,55 +36,52 @@ export function PostCard({ post, author, names, isNew }: {
   const prog = useAction(async () => updatePost(post.id, { progress: !post.progress }));
   const vis = useAction(async () => updatePost(post.id, { visibility: post.visibility === 'friends' ? 'private' : 'friends' }));
   const created = post.createdAt?.toDate?.() ?? null;
-  const kindLabel = post.kind === 'day' ? (post.day?.onTarget ? 'DAY ✓' : 'DAY') : post.kind === 'activity'
-    ? ACTIVITY_TYPES[post.activity?.type ?? 'other'].glyph : post.kind === 'photo' ? (post.progress ? 'PROGRESS' : 'PHOTO') : 'STATUS';
 
   return (
     <article className={`post ${isNew ? 'enter' : ''}`}>
       <header className="post-h">
-        <Link to={`/u/${post.authorId}`}><Avatar p={author} size={28} /></Link>
-        <div className="grow col" style={{ gap: 0 }}>
-          <div className="row" style={{ gap: 6 }}>
-            <Link to={`/u/${post.authorId}`} className="who trunc">{mine ? 'YOU' : displayName(author)}</Link>
-            <span className={`post-kind ${post.kind} ${post.kind === 'day' && !post.day?.onTarget ? 'miss' : ''}`}>{kindLabel}</span>
+        <Link to={`/u/${post.authorId}`}><Avatar p={author} size={38} /></Link>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="trunc">
+            <Link to={`/u/${post.authorId}`} className="who">{mine ? 'You' : displayName(author)}</Link>
+            <span className="muted"> {action(post, mine)}</span>
           </div>
-          <span className="meta">{relTime(created)}{post.visibility === 'private' ? ' · ONLY YOU' : ''}</span>
+          <div className="meta">{relTime(created)}{post.visibility === 'private' ? ' · 🔒 Only you' : ''}</div>
         </div>
         {mine && (
-          <button className="btn ghost sm" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label="Post options">⋯</button>
+          <button className="icon-btn" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label="Post options"><Icon name="more" /></button>
         )}
       </header>
       {mine && menu && (
-        <div className="panel-f" style={{ borderTop: 0, borderBottom: '1px solid var(--rule)' }}>
-          <button className="btn sm" onClick={() => { setEditing(true); setMenu(false); }}>EDIT TEXT</button>
+        <div className="row wrap" style={{ padding: '10px 14px 0' }}>
+          <button className="btn sm" onClick={() => { setEditing(true); setMenu(false); }}>Edit text</button>
           {post.photos.length > 0 && (
-            <ActionButton size="sm" state={prog.state} onClick={() => prog.run()} doneLabel="SAVED">
-              {post.progress ? 'UNMARK PROGRESS' : 'MARK AS PROGRESS'}
+            <ActionButton size="sm" state={prog.state} onClick={() => prog.run()} doneLabel="Saved">
+              {post.progress ? 'Remove from progress' : 'Mark as progress photo'}
             </ActionButton>
           )}
-          <ActionButton size="sm" state={vis.state} onClick={() => vis.run()} doneLabel="SAVED">
-            {post.visibility === 'friends' ? 'MAKE PRIVATE' : 'SHARE WITH FRIENDS'}
+          <ActionButton size="sm" state={vis.state} onClick={() => vis.run()} doneLabel="Saved">
+            {post.visibility === 'friends' ? 'Make private' : 'Share with friends'}
           </ActionButton>
-          <span className="grow" />
-          <ActionButton size="sm" variant="danger" state={del.state} onClick={() => confirm('Delete this post?') && del.run()} pendingLabel="DELETING">
-            DELETE
+          <ActionButton size="sm" variant="danger" state={del.state} onClick={() => confirm('Delete this post?') && del.run()} pendingLabel="Deleting…">
+            Delete
           </ActionButton>
         </div>
       )}
       <div className="post-b">
-        {post.kind === 'day' && post.day && <DayBlock d={post.day} />}
-        {post.kind === 'activity' && post.activity && <ActivityBlock a={post.activity} />}
         {editing ? (
           <div className="col">
             <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} autoFocus />
             <div className="row">
-              <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>SAVE</ActionButton>
-              <button className="btn sm ghost" onClick={() => { setEditing(false); setText(post.text); }}>CANCEL</button>
+              <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>Save</ActionButton>
+              <button className="btn sm ghost" onClick={() => { setEditing(false); setText(post.text); }}>Cancel</button>
             </div>
           </div>
         ) : post.text ? (
           <div className="post-text">{post.text}</div>
         ) : null}
+        {post.kind === 'day' && post.day && <DayBlock d={post.day} />}
+        {post.kind === 'activity' && post.activity && <ActivityBlock a={post.activity} />}
         {post.weightKg != null && <WeightTag kg={post.weightKg} />}
         {post.photos.length > 0 && (
           <div className={`photos n${Math.min(post.photos.length, 4)}`}>
@@ -84,7 +91,7 @@ export function PostCard({ post, author, names, isNew }: {
           </div>
         )}
       </div>
-      {post.visibility === 'friends' || mine ? <Reactions postId={post.id} names={names} /> : null}
+      <Reactions postId={post.id} names={names} />
       {zoom && <Lightbox src={zoom} onClose={() => setZoom(null)} />}
     </article>
   );
@@ -92,23 +99,25 @@ export function PostCard({ post, author, names, isNew }: {
 
 function WeightTag({ kg }: { kg: number }) {
   const { units } = useSession();
-  return <div className="small"><span className="muted">WEIGHT AT POST › </span><b>{fmtWeight(units, kg)}</b></div>;
+  return <div><span className="pill">⚖️ {fmtWeight(units, kg)}</span></div>;
 }
 
 function DayBlock({ d }: { d: NonNullable<Post['day']> }) {
   const pct = d.budget ? Math.round((d.kcal / d.budget) * 100) : 0;
   return (
-    <div className="col" style={{ gap: 10 }}>
-      <div className="row between wrap">
-        <span className={`stamp ${d.onTarget ? '' : 'miss'}`}>{d.onTarget ? 'ON TARGET' : 'LOGGED'}</span>
-        <span className="small muted">{fmtDay(d.date)} · {d.date}</span>
+    <div className="summary">
+      <div className="row between">
+        <span className="small muted">{fmtDay(d.date)}</span>
+        {d.onTarget ? <span className="pill ok">✓ On target</span> : <span className="pill">{pct}% of target</span>}
       </div>
-      <div className="stats c3" style={{ border: '1px solid var(--rule)', borderRight: 0, borderBottom: 0 }}>
-        <div className="stat"><div className="k">KCAL</div><div className="v">{fmtNum(d.kcal)}</div><div className="s">{pct}% of {fmtNum(d.budget)}</div></div>
-        <div className="stat"><div className="k">STREAK</div><div className="v">{d.streak}<small> D</small></div><div className="s">{d.onTarget ? 'kept alive' : '—'}</div></div>
-        <div className="stat"><div className="k">P / C / F</div><div className="v" style={{ fontSize: 15 }}>{d.protein ?? '—'}/{d.carbs ?? '—'}/{d.fat ?? '—'}<small> g</small></div></div>
+      <div className="summary-nums">
+        <div><b>{fmtNum(d.kcal)}</b><span>of {fmtNum(d.budget)} kcal</span></div>
+        {d.protein != null && <div><b style={{ color: 'var(--protein)' }}>{d.protein} g</b><span>protein</span></div>}
+        {d.carbs != null && <div><b style={{ color: 'var(--carbs)' }}>{d.carbs} g</b><span>carbs</span></div>}
+        {d.fat != null && <div><b style={{ color: 'var(--fat)' }}>{d.fat} g</b><span>fat</span></div>}
+        {d.streak > 0 && <div><b>🔥 {d.streak}</b><span>day streak</span></div>}
       </div>
-      <Meter value={d.kcal} max={Math.max(d.budget * 1.25, d.kcal)} cls={d.onTarget ? 'ok' : d.kcal > d.budget ? 'over' : ''} ticks={[d.budget]} />
+      <Meter value={d.kcal} max={Math.max(d.budget, d.kcal)} cls={d.onTarget ? 'ok' : d.kcal > d.budget ? 'over' : 'accent'} />
     </div>
   );
 }
@@ -118,16 +127,16 @@ export function ActivityBlock({ a }: { a: NonNullable<Post['activity']> }) {
   const t = ACTIVITY_TYPES[a.type];
   const pace = a.type === 'ride' ? fmtSpeed(units, a.distanceM, a.durationSec) : fmtPace(units, a.distanceM, a.durationSec);
   return (
-    <div className="col" style={{ gap: 10 }}>
-      <h3 style={{ fontSize: 14 }}>{a.title || t.label}</h3>
-      <div className="stats c4" style={{ border: '1px solid var(--rule)', borderRight: 0, borderBottom: 0 }}>
-        {a.distanceM > 0 && <div className="stat"><div className="k">DIST</div><div className="v">{fmtDist(units, a.distanceM)}</div></div>}
-        <div className="stat"><div className="k">TIME</div><div className="v">{fmtDuration(a.durationSec)}</div></div>
-        {a.distanceM > 0 && <div className="stat"><div className="k">{a.type === 'ride' ? 'SPEED' : 'PACE'}</div><div className="v">{pace}</div></div>}
-        {a.elevationM > 0 && <div className="stat"><div className="k">ELEV</div><div className="v">{fmtElev(units, a.elevationM)}</div></div>}
-        <div className="stat"><div className="k">KCAL</div><div className="v">{fmtNum(a.kcal)}</div></div>
+    <div className="summary">
+      <b>{t.glyph} {a.title || t.label}</b>
+      <div className="summary-nums">
+        {a.distanceM > 0 && <div><b>{fmtDist(units, a.distanceM)}</b><span>distance</span></div>}
+        <div><b>{fmtDuration(a.durationSec)}</b><span>time</span></div>
+        {a.distanceM > 0 && <div><b>{pace}</b><span>{a.type === 'ride' ? 'speed' : 'pace'}</span></div>}
+        {a.elevationM > 0 && <div><b>{fmtElev(units, a.elevationM)}</b><span>elevation</span></div>}
+        <div><b>{fmtNum(a.kcal)}</b><span>kcal</span></div>
       </div>
-      {a.route?.length > 3 && <RouteTrace route={a.route} h={180} />}
+      {a.route?.length > 3 && <RouteTrace route={a.route} h={170} />}
       {a.exercises?.length > 0 && <ExerciseTable rows={a.exercises} />}
     </div>
   );
@@ -136,11 +145,14 @@ export function ActivityBlock({ a }: { a: NonNullable<Post['activity']> }) {
 export function ExerciseTable({ rows }: { rows: StrengthSet[] }) {
   const { units } = useSession();
   return (
-    <table className="kv" style={{ border: '1px solid var(--rule)' }}>
-      <thead><tr><th>EXERCISE</th><th className="n">SETS×REPS</th><th className="n">LOAD</th></tr></thead>
+    <table className="kv">
       <tbody>
         {rows.map((r, i) => (
-          <tr key={i}><td>{r.name}</td><td className="n">{r.sets}×{r.reps}</td><td className="n">{r.weightKg ? fmtWeight(units, r.weightKg) : 'BW'}</td></tr>
+          <tr key={i}>
+            <td>{r.name}</td>
+            <td className="n muted">{r.sets} × {r.reps}</td>
+            <td className="n" style={{ width: 90 }}>{r.weightKg ? fmtWeight(units, r.weightKg) : 'Bodyweight'}</td>
+          </tr>
         ))}
       </tbody>
     </table>

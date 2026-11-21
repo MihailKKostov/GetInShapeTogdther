@@ -10,7 +10,7 @@ import {
 } from '../data/types';
 import { BarChart, LineChart } from '../components/Charts';
 import {
-  ActionButton, Avatar, Empty, Lightbox, Panel, Seg, Skeleton, VisBadge, useToast,
+  ActionButton, Avatar, Empty, Icon, Lightbox, Panel, Seg, Skeleton, VisBadge, useToast,
 } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 import { useDoc, useQuery } from '../hooks/useFirestore';
@@ -31,12 +31,12 @@ export default function Profile() {
   if (!self && !isFriend) {
     return (
       <div className="page">
-        <Empty title="NOT CONNECTED">You can only view profiles of friends. <Link to="/friends">Friends →</Link></Empty>
+        <div className="panel"><Empty icon="🔒" title="Not connected">You can only view your friends' profiles. <Link to="/friends">Go to friends</Link></Empty></div>
       </div>
     );
   }
   if (prof.loading || !prof.data) {
-    return <div className="page"><Skeleton h={120} label="LOADING PROFILE" /><Skeleton h={200} label="LOADING STATS" /></div>;
+    return <div className="page"><Skeleton h={120} /><Skeleton h={200} /></div>;
   }
   return <ProfileView p={prof.data} self={self} />;
 }
@@ -52,7 +52,7 @@ function useShareToggle(p: UserProfile, self: boolean) {
     setBusy(k);
     const next = { ...sharing, [k]: !sharing[k] };
     await setSharing(uid, next);
-    toast(`${LABELS[k]} → ${next[k] ? 'visible to friends' : 'private'}`);
+    toast(`${LABELS[k]} is now ${next[k] ? 'visible to friends' : 'private'}`);
   }, { minPending: 300, doneFor: 10 });
   const badge = (k: ShareKey) => (
     <VisBadge
@@ -99,10 +99,9 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
     const hidden = !self && k && !sharing[k];
     return (
       <div className="stat">
-        <div className="k">{label}</div>
-        <div className="v">{hidden ? <span className="faint">░░░░</span> : value}</div>
-        {(sub || hidden) && <div className="s">{hidden ? 'private' : sub}</div>}
-        {self && <div style={{ marginTop: 6 }}>{k ? badge(k) : <span className="vis priv">○ NEVER SHARED</span>}</div>}
+        <div className="k"><span>{label}</span>{self && (k ? badge(k) : <span className="vis">🔒 Private</span>)}</div>
+        <div className="v">{hidden ? <span className="faint">🔒</span> : value}</div>
+        {(sub || hidden) && <div className="s">{hidden ? 'Not shared' : sub}</div>}
       </div>
     );
   };
@@ -111,39 +110,39 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
     <div className="page">
       <Header p={p} self={self} />
 
-      <Panel title="CONSISTENCY" idx="01" tight right={<VisBadge pub />}>
+      <Panel title="Highlights">
         <div className="stats c4">
-          <div className="stat"><div className="k">STREAK</div><div className="v">{stats.streak}<small> D</small></div><div className="s">best {stats.bestStreak} d</div></div>
-          <div className="stat"><div className="k">DAYS ON TARGET</div><div className="v">{stats.daysOnTarget}</div><div className="s">{stats.lastClosedDay ? `last ${fmtShort(parseKey(stats.lastClosedDay))}` : 'none closed'}</div></div>
-          <div className="stat"><div className="k">WORKOUTS</div><div className="v">{stats.workouts}</div><div className="s">{fmtDuration(stats.activeSec)} total</div></div>
-          <div className="stat"><div className="k">DISTANCE</div><div className="v">{fmtDist(units, stats.distanceM)}</div><div className="s">all time</div></div>
+          <div className="stat"><div className="k">🔥 Streak</div><div className="v">{stats.streak}<small> {stats.streak === 1 ? 'day' : 'days'}</small></div><div className="s">Best: {stats.bestStreak}</div></div>
+          <div className="stat"><div className="k">✓ Days on target</div><div className="v">{stats.daysOnTarget}</div><div className="s">{stats.lastClosedDay ? `Last: ${fmtShort(parseKey(stats.lastClosedDay))}` : 'None yet'}</div></div>
+          <div className="stat"><div className="k">🏃 Workouts</div><div className="v">{stats.workouts}</div><div className="s">{fmtDuration(stats.activeSec)} total</div></div>
+          <div className="stat"><div className="k">📍 Distance</div><div className="v">{fmtDist(units, stats.distanceM)}</div><div className="s">All time</div></div>
         </div>
       </Panel>
 
-      <Panel title="BODY" idx="02" tight right={self ? <span className="muted small">TAP BADGES TO SHARE</span> : undefined}>
+      <Panel title="Body & goals" right={self ? <span className="muted small">Tap a badge to change</span> : undefined}>
         <div className="stats c3 m2">
-          {cell('currentWeight', 'CURRENT', fmtWeight(units, body.current), body.current == null ? 'no weigh-in yet' : undefined)}
-          {cell('targetWeight', 'TARGET', fmtWeight(units, body.target), toGo != null ? `${fmtWeight(units, toGo, true)} to go` : undefined)}
-          {cell('startWeight', 'START', fmtWeight(units, body.start))}
-          {cell('weightChange', 'CHANGE', fmtWeight(units, body.change, true), 'since start')}
-          {cell('height', 'HEIGHT', fmtHeight(units, body.height))}
-          {cell('calorieGoal', 'KCAL GOAL', body.kcal ? `${fmtNum(body.kcal)}` : '—', 'per day')}
+          {cell('currentWeight', 'Current', fmtWeight(units, body.current), body.current == null ? 'No weigh-in yet' : undefined)}
+          {cell('targetWeight', 'Goal', fmtWeight(units, body.target), toGo != null ? `${fmtWeight(units, toGo, true)} to go` : undefined)}
+          {cell('startWeight', 'Start', fmtWeight(units, body.start))}
+          {cell('weightChange', 'Change', fmtWeight(units, body.change, true), 'Since start')}
+          {cell('height', 'Height', fmtHeight(units, body.height))}
+          {cell('calorieGoal', 'Calories', body.kcal ? `${fmtNum(body.kcal)}` : '—', 'kcal per day')}
           {self && cell(null, 'BMI', bmi ? fmtNum(bmi, 1) : '—')}
         </div>
       </Panel>
 
-      <Panel title="WEIGHT HISTORY" idx="03" right={self ? badge('weightHistory') : undefined}>
+      <Panel title="Weight trend" right={self ? badge('weightHistory') : undefined}>
         {!canWeights ? <PrivateNote what="weight history" /> : weights.loading ? <Skeleton h={180} /> : (
           <WeightChart data={weights.data} target={body.target} />
         )}
       </Panel>
 
-      <Panel title="FOOD LOG · CALORIES" idx="04" right={self ? badge('diary') : undefined}>
+      <Panel title="Nutrition" right={self ? badge('diary') : undefined}>
         {!canDiary ? <PrivateNote what="food log" /> : <CalorieHistory uid={p.uid} />}
       </Panel>
 
-      <Panel title="ACTIVITY" idx="05" tight right={self ? badge('activities') : undefined}>
-        {!canActs ? <div className="panel-b"><PrivateNote what="activity history" /></div> : <ActivitySection uid={p.uid} self={self} />}
+      <Panel title="Exercise" tight right={self ? badge('activities') : undefined}>
+        {!canActs ? <PrivateNote what="exercise history" /> : <ActivitySection uid={p.uid} self={self} />}
       </Panel>
 
       <ProgressPhotos uid={p.uid} />
@@ -152,7 +151,7 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
 }
 
 function PrivateNote({ what }: { what: string }) {
-  return <div className="empty"><b>○ PRIVATE</b>This friend hasn't shared their {what}.</div>;
+  return <Empty icon="🔒" title="Private">This friend hasn't shared their {what}.</Empty>;
 }
 
 function Header({ p, self }: { p: UserProfile; self: boolean }) {
@@ -167,33 +166,33 @@ function Header({ p, self }: { p: UserProfile; self: boolean }) {
   });
   return (
     <section className="panel">
-      <div className="row top" style={{ padding: 12, gap: 14 }}>
-        <Avatar p={p} size={76} />
+      <div className="row top" style={{ padding: 16, gap: 16 }}>
+        <Avatar p={p} size={72} />
         <div className="grow col" style={{ gap: 4 }}>
-          <h1 style={{ textTransform: 'none', fontSize: 20 }} className="trunc">{displayName(p)}</h1>
+          <h1 className="trunc">{displayName(p)}</h1>
           {p.nickname && p.nickname !== p.displayName && <div className="small muted">{p.displayName}</div>}
           {editing ? (
             <div className="col" style={{ gap: 6 }}>
-              <input value={status} maxLength={80} autoFocus placeholder="short status, e.g. cutting for summer" onChange={(e) => setStatus(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save.run()} />
+              <input value={status} maxLength={80} autoFocus placeholder="e.g. Training for a 10k" onChange={(e) => setStatus(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save.run()} />
               <div className="row">
-                <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>SAVE</ActionButton>
-                <button className="btn sm ghost" onClick={() => { setEditing(false); setStatus(p.status); }}>CANCEL</button>
+                <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>Save</ActionButton>
+                <button className="btn sm ghost" onClick={() => { setEditing(false); setStatus(p.status); }}>Cancel</button>
                 <span className="small muted">{status.length}/80</span>
               </div>
             </div>
           ) : (
             <div className="row" style={{ gap: 6 }}>
-              <span className={p.status ? '' : 'faint'}>&gt; {p.status || (self ? 'set a status' : '—')}</span>
-              {self && <button className="btn ghost sm" onClick={() => setEditing(true)} aria-label="Edit status">✎</button>}
+              <span className={p.status ? '' : 'faint'}>{p.status || (self ? 'Set a status' : '')}</span>
+              {self && <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={() => setEditing(true)} aria-label="Edit status"><Icon name="edit" size={16} /></button>}
             </div>
           )}
-          <div className="small muted">ACTIVE {relTime(p.lastActiveAt?.toDate?.())}</div>
+          <div className="small muted">Active {relTime(p.lastActiveAt?.toDate?.())}</div>
         </div>
       </div>
       {self && (
         <div className="panel-f">
-          <Link className="btn sm" to="/settings">EDIT PROFILE & GOALS</Link>
-          <Link className="btn sm" to="/emojis">CUSTOM EMOJIS</Link>
+          <Link className="btn sm" to="/settings">Edit profile & goals</Link>
+          <Link className="btn sm ghost" to="/emojis">Custom emojis</Link>
         </div>
       )}
     </section>
@@ -211,13 +210,13 @@ function WeightChart({ data, target }: { data: WeightEntry[]; target?: number })
       x: parseKey(w.date).getTime(), y: kgTo(units, w.kg), label: fmtShort(parseKey(w.date)),
     }));
   }, [data, range, units]);
-  if (!data.length) return <Empty title="NO WEIGH-INS">Log weight from the LOG tab.</Empty>;
+  if (!data.length) return <Empty icon="⚖️" title="No weigh-ins yet">Log your weight from the Diary.</Empty>;
   const first = pts[0]?.y, last = pts[pts.length - 1]?.y;
   return (
     <div className="col">
       <div className="row between wrap">
-        <Seg<Range> value={range} onChange={setRange} options={[{ v: '30', l: '30D' }, { v: '90', l: '90D' }, { v: '365', l: '1Y' }, { v: 'all', l: 'ALL' }]} />
-        {pts.length > 1 && <span className="small">Δ <b>{fmtNum(last - first, 1)} {weightUnit(units)}</b> <span className="muted">in range</span></span>}
+        <Seg<Range> value={range} onChange={setRange} options={[{ v: '30', l: '1M' }, { v: '90', l: '3M' }, { v: '365', l: '1Y' }, { v: 'all', l: 'All' }]} />
+        {pts.length > 1 && <span className="small"><b>{last - first > 0 ? '+' : ''}{fmtNum(last - first, 1)} {weightUnit(units)}</b> <span className="muted">this period</span></span>}
       </div>
       {pts.length ? <LineChart points={pts} target={target != null ? kgTo(units, target) : undefined} unit={weightUnit(units)} /> : <div className="small muted">No weigh-ins in this range.</div>}
     </div>
@@ -239,7 +238,7 @@ function CalorieHistory({ uid }: { uid: string }) {
       value: kcal,
       target: d?.budget,
       cls: !d?.closed ? 'open' : d.onTarget ? 'ok' : kcal > (d.budget ?? 0) ? 'over' : 'under',
-      tip: !d ? 'no log' : !d.closed ? 'open' : d.onTarget ? 'on target' : 'off target',
+      tip: !d ? 'not logged' : !d.closed ? 'not completed' : d.onTarget ? 'on target' : 'off target',
     };
   });
   const closed = days.data.filter((d) => d.closed);
@@ -247,15 +246,15 @@ function CalorieHistory({ uid }: { uid: string }) {
   return (
     <div className="col">
       <div className="row between wrap">
-        <Seg value={view} onChange={setView} options={[{ v: 'grid', l: '12 WEEKS' }, { v: 'bars', l: '30 DAYS' }]} />
-        <span className="small"><b>{on}</b>/<span>{closed.length}</span> <span className="muted">closed days on target</span></span>
+        <Seg value={view} onChange={setView} options={[{ v: 'grid', l: '12 weeks' }, { v: 'bars', l: '30 days' }]} />
+        <span className="small"><b>{on}</b> of {closed.length} <span className="muted">days on target</span></span>
       </div>
       {view === 'bars' ? <BarChart data={last30} unit="kcal" /> : <DayGrid byDate={byDate} />}
-      <div className="row wrap small muted" style={{ gap: 12 }}>
-        <span><span className="ok">■</span> on target</span>
-        <span><span className="bad">■</span> over</span>
-        <span><span className="warn">■</span> under</span>
-        <span><span className="faint">□</span> open / not logged</span>
+      <div className="legend">
+        <span><i style={{ background: 'var(--ok)' }} />On target</span>
+        <span><i style={{ background: 'var(--bad)' }} />Over</span>
+        <span><i style={{ background: 'var(--warn)' }} />Under</span>
+        <span><i style={{ background: 'var(--line)' }} />Not completed</span>
       </div>
     </div>
   );
@@ -270,22 +269,17 @@ function DayGrid({ byDate }: { byDate: Map<string, DiaryDay> }) {
   const s = sel ? byDate.get(sel) : null;
   return (
     <div className="col" style={{ gap: 6 }}>
-      <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 1fr)', gridAutoFlow: 'column', gap: 3, justifyContent: 'start' }}>
+      <div className="day-grid">
         {cells.map((k) => {
           const d = byDate.get(k);
           const kcal = d?.totals?.kcal ?? 0;
-          const color = !d?.closed ? (d?.entries?.length ? 'var(--rule)' : 'transparent') : d.onTarget ? 'var(--ok)' : kcal > (d.budget ?? 0) ? 'var(--bad)' : 'var(--warn)';
+          const color = !d?.closed ? (d?.entries?.length ? 'var(--line)' : undefined) : d.onTarget ? 'var(--ok)' : kcal > (d.budget ?? 0) ? 'var(--bad)' : 'var(--warn)';
           return (
-            <button
-              key={k}
-              onClick={() => setSel(k)}
-              title={k}
-              style={{ width: 16, height: 16, padding: 0, border: `1px solid ${k === sel ? 'var(--accent)' : 'var(--faint)'}`, background: color, cursor: 'pointer' }}
-            />
+            <button key={k} onClick={() => setSel(k)} title={k} className={k === sel ? 'sel' : ''} style={color ? { background: color } : undefined} />
           );
         })}
       </div>
-      <div className="small">{sel ? <>› {sel}: {s ? `${fmtNum(s.totals?.kcal ?? 0)} / ${fmtNum(s.budget ?? 0)} kcal · ${s.closed ? (s.onTarget ? 'on target' : 'off target') : 'open'}` : 'no log'}</> : <span className="muted">› tap a day</span>}</div>
+      <div className="small">{sel ? <>{fmtShort(parseKey(sel))}: {s ? `${fmtNum(s.totals?.kcal ?? 0)} / ${fmtNum(s.budget ?? 0)} kcal · ${s.closed ? (s.onTarget ? 'on target' : 'off target') : 'not completed'}` : 'not logged'}</> : <span className="muted">Tap a day for details</span>}</div>
     </div>
   );
 }
@@ -297,11 +291,11 @@ function ActivitySection({ uid, self }: { uid: string; self: boolean }) {
   const acts = useQuery<Activity>(q, `pa:${uid}:${self}`);
   const [open, setOpen] = useState<Activity | null>(null);
   const weekly = useMemo(() => weeklyMinutes(acts.data), [acts.data]);
-  if (acts.loading) return <div className="panel-b"><Skeleton h={140} /></div>;
-  if (!acts.data.length) return <div className="panel-b"><Empty title="NO ACTIVITIES YET" /></div>;
+  if (acts.loading) return <div style={{ padding: 16 }}><Skeleton h={140} /></div>;
+  if (!acts.data.length) return <Empty icon="🏃" title="No exercise yet" />;
   return (
     <>
-      <div className="panel-b"><BarChart data={weekly} unit="min/week" h={120} /></div>
+      <div style={{ padding: '4px 16px 8px' }}><BarChart data={weekly} unit="min" h={120} /></div>
       <ActivityList acts={acts.data.slice(0, 10)} onOpen={setOpen} />
       {open && <ActivityDetail a={open} onClose={() => setOpen(null)} editable={self} />}
     </>
@@ -322,32 +316,28 @@ function ProgressPhotos({ uid }: { uid: string }) {
 
   return (
     <Panel
-      title="PROGRESS PHOTOS"
-      idx="06"
-      right={<span className="muted">{items.length}</span>}
+      title="Progress photos"
+      right={items.length >= 2 ? <Seg value={mode} onChange={setMode} options={[{ v: 'grid', l: 'Timeline' }, { v: 'compare', l: 'Compare' }]} /> : undefined}
       footer={items.length >= 2 ? (
-        <>
-          <Seg value={mode} onChange={setMode} options={[{ v: 'grid', l: 'TIMELINE' }, { v: 'compare', l: 'COMPARE' }]} />
-          <span className="small muted">{mode === 'grid' ? `select 2 to compare (${sel.length}/2)` : sel.length === 2 ? 'your selection' : 'first vs latest'}</span>
-        </>
+        <span className="small muted">{mode === 'grid' ? `Select two photos to compare (${sel.length}/2)` : sel.length === 2 ? 'Comparing your selection' : 'Comparing first and latest'}</span>
       ) : undefined}
     >
       {posts.loading ? <Skeleton h={160} /> : items.length === 0 ? (
-        <Empty title="NO PROGRESS PHOTOS">{uid === me ? 'Post a photo from the feed with PROGRESS on to start your timeline.' : 'Nothing shared yet.'}</Empty>
+        <Empty icon="📸" title="No progress photos">{uid === me ? 'Post a progress photo from the feed to start your timeline.' : 'Nothing shared yet.'}</Empty>
       ) : mode === 'compare' && chosen.length === 2 ? (
         <div className="compare">
           {chosen.map((c, i) => (
             <figure key={c.key}>
               <img src={c.ph.url} alt="" onClick={() => setZoom(c.ph.url)} style={{ cursor: 'zoom-in' }} />
               <figcaption>
-                <span>{i === 0 ? 'BEFORE' : 'AFTER'} · {c.post.createdAt ? fmtShort(c.post.createdAt.toDate()) : ''}</span>
+                <span><b>{i === 0 ? 'Before' : 'After'}</b> · {c.post.createdAt ? fmtShort(c.post.createdAt.toDate()) : ''}</span>
                 {c.post.weightKg != null && <b>{fmtWeight(units, c.post.weightKg)}</b>}
               </figcaption>
             </figure>
           ))}
           {chosen[0].post.createdAt && chosen[1].post.createdAt && (
-            <div style={{ gridColumn: '1 / -1', background: 'var(--paper)', padding: '6px 8px' }} className="small">
-              Δ {Math.round((chosen[1].post.createdAt.toMillis() - chosen[0].post.createdAt.toMillis()) / 86400000)} DAYS
+            <div style={{ gridColumn: '1 / -1' }} className="small muted center">
+              {Math.round((chosen[1].post.createdAt.toMillis() - chosen[0].post.createdAt.toMillis()) / 86400000)} days apart
               {chosen[0].post.weightKg != null && chosen[1].post.weightKg != null && <> · {fmtWeight(units, chosen[1].post.weightKg - chosen[0].post.weightKg, true)}</>}
             </div>
           )}

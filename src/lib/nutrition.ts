@@ -88,17 +88,17 @@ export function isOnTarget(s: PrivateSettings, kcal: number, budget: number): bo
 
 /** MET values (Compendium of Physical Activities, rounded). */
 export const ACTIVITY_TYPES: Record<ActivityType, { label: string; met: number; distance: boolean; glyph: string }> = {
-  run: { label: 'Run', met: 9.8, distance: true, glyph: 'RUN' },
-  ride: { label: 'Ride', met: 7.5, distance: true, glyph: 'RDE' },
-  walk: { label: 'Walk', met: 3.5, distance: true, glyph: 'WLK' },
-  hike: { label: 'Hike', met: 6.0, distance: true, glyph: 'HKE' },
-  swim: { label: 'Swim', met: 7.0, distance: true, glyph: 'SWM' },
-  row: { label: 'Row', met: 7.0, distance: true, glyph: 'ROW' },
-  strength: { label: 'Strength', met: 5.0, distance: false, glyph: 'STR' },
-  hiit: { label: 'HIIT', met: 8.0, distance: false, glyph: 'HIT' },
-  yoga: { label: 'Yoga / Mobility', met: 2.8, distance: false, glyph: 'YGA' },
-  sport: { label: 'Sport', met: 7.0, distance: false, glyph: 'SPT' },
-  other: { label: 'Other', met: 4.5, distance: false, glyph: 'OTH' },
+  run: { label: 'Run', met: 9.8, distance: true, glyph: '🏃' },
+  ride: { label: 'Ride', met: 7.5, distance: true, glyph: '🚴' },
+  walk: { label: 'Walk', met: 3.5, distance: true, glyph: '🚶' },
+  hike: { label: 'Hike', met: 6.0, distance: true, glyph: '🥾' },
+  swim: { label: 'Swim', met: 7.0, distance: true, glyph: '🏊' },
+  row: { label: 'Row', met: 7.0, distance: true, glyph: '🚣' },
+  strength: { label: 'Strength', met: 5.0, distance: false, glyph: '🏋️' },
+  hiit: { label: 'HIIT', met: 8.0, distance: false, glyph: '⚡' },
+  yoga: { label: 'Yoga / Mobility', met: 2.8, distance: false, glyph: '🧘' },
+  sport: { label: 'Sport', met: 7.0, distance: false, glyph: '⚽' },
+  other: { label: 'Other', met: 4.5, distance: false, glyph: '✨' },
 };
 
 export function estimateKcal(type: ActivityType, durationSec: number, weightKg: number, distanceM = 0): number {

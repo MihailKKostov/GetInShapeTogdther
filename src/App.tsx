@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Skeleton, ToastProvider } from './components/ui';
+import { Skeleton, Spinner, ToastProvider } from './components/ui';
 import { SessionProvider, useSession } from './hooks/useSession';
-import Login, { LOGO } from './pages/Login';
+import Login from './pages/Login';
 import Setup from './pages/Setup';
 import Feed from './pages/Feed';
 import Diary from './pages/Diary';
@@ -16,19 +16,13 @@ const Invite = lazy(() => import('./pages/Invite'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Emojis = lazy(() => import('./pages/Emojis'));
 
-/** Boot screen: shows each step as it resolves instead of a blank page. */
-function Boot({ steps }: { steps: [string, boolean][] }) {
-  const [dots, setDots] = useState(0);
-  useEffect(() => { const t = setInterval(() => setDots((d) => (d + 1) % 4), 250); return () => clearInterval(t); }, []);
+/** Boot screen: a logo and a spinner while auth and profile load. */
+function Boot({ label }: { label: string }) {
   return (
     <div className="login">
-      <div className="box col gap2">
-        <pre className="ascii">{LOGO}</pre>
-        <div className="small" style={{ lineHeight: 1.9 }}>
-          {steps.map(([l, done]) => (
-            <div key={l}>{done ? <span className="ok">[ OK ]</span> : <span className="accent">[ {'.'.repeat(dots).padEnd(3, ' ')}]</span>} {l}</div>
-          ))}
-        </div>
+      <div className="col" style={{ alignItems: 'center', gap: 16 }}>
+        <span className="logo"><img src="/favicon.svg" alt="" />GIST</span>
+        <span className="row muted small"><Spinner /> {label}</span>
       </div>
     </div>
   );
@@ -36,13 +30,13 @@ function Boot({ steps }: { steps: [string, boolean][] }) {
 
 function Gate() {
   const { user, authLoading, settings, settingsLoading, profile } = useSession();
-  if (authLoading) return <Boot steps={[['AUTH', false]]} />;
+  if (authLoading) return <Boot label="Signing in…" />;
   if (!user) return <Login />;
-  if (settingsLoading || !profile) return <Boot steps={[['AUTH', true], ['PROFILE', !!profile], ['SETTINGS', !settingsLoading]]} />;
+  if (settingsLoading || !profile) return <Boot label="Loading your profile…" />;
   if (!settings?.setupComplete) return <Layout><Setup /></Layout>;
   return (
     <Layout>
-      <Suspense fallback={<div className="page"><Skeleton h={160} label="LOADING MODULE" /></div>}>
+      <Suspense fallback={<div className="page"><Skeleton h={160} /></div>}>
         <Routes>
           <Route path="/" element={<Feed />} />
           <Route path="/log" element={<Diary />} />

@@ -69,18 +69,18 @@ export function EmojiPicker({
   return createPortal(
     <div className="popover" style={pos} ref={ref}>
       <div className="picker" role="dialog" aria-label="Pick emoji">
-        <div style={{ padding: 6, borderBottom: '1px solid var(--line)' }}>
-          <input autoFocus placeholder="search emoji…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div style={{ padding: 8, borderBottom: '1px solid var(--line)' }}>
+          <input autoFocus placeholder="Search emoji" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="picker-grid">
           {sections.map((s) => (
             <SectionFrag key={s.id} id={s.id} items={s.items} />
           ))}
-          {sections.every((s) => !s.items.length) && <div className="picker-sec">no match</div>}
+          {sections.every((s) => !s.items.length) && <div className="picker-sec">No match</div>}
         </div>
-        <div style={{ borderTop: '1px solid var(--line)', padding: '4px 8px', display: 'flex', justifyContent: 'space-between' }} className="small">
+        <div style={{ borderTop: '1px solid var(--line)', padding: '8px 12px', display: 'flex', justifyContent: 'space-between' }} className="small">
           <span className="muted">{emojis.size} custom</span>
-          <Link to="/emojis" onClick={onClose}>+ CREATE EMOJI</Link>
+          <Link to="/emojis" onClick={onClose}>+ Create emoji</Link>
         </div>
       </div>
     </div>,

@@ -4,7 +4,7 @@ import { createPost, latestWeight, uploadPostPhotos } from '../data/api';
 import type { Visibility } from '../data/types';
 import { PostCard } from '../components/PostCard';
 import {
-  ActionButton, Empty, ErrorLine, Seg, Skeleton, Toggle, UploadProgress, useToast,
+  ActionButton, Empty, ErrorLine, Icon, Seg, Skeleton, Spinner, Toggle, UploadProgress, useToast,
 } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 import { useObjectUrls } from '../hooks/useObjectUrls';
@@ -36,32 +36,33 @@ export default function Feed() {
           value={filter}
           onChange={(f) => { setFilter(f); setPage(15); }}
           options={[
-            { v: 'all', l: 'ALL' },
-            { v: 'friends', l: `FRIENDS·${friendIds.length}` },
-            { v: 'me', l: 'ME' },
-            { v: 'progress', l: 'PROGRESS' },
+            { v: 'all', l: 'All' },
+            { v: 'friends', l: 'Friends' },
+            { v: 'me', l: 'Me' },
+            { v: 'progress', l: 'Progress' },
           ]}
         />
-        <span className="small muted">{feed.refreshing ? 'SYNCING…' : `${feed.posts.length} POSTS`}</span>
+        {feed.refreshing && !feed.loading && <span className="small muted row"><Spinner /> Updating</span>}
       </div>
 
       {(friendsLoading || feed.loading) && (
         <div className="col">
-          <Skeleton h={120} label="LOADING FEED" />
-          <Skeleton h={90} label="LOADING FEED" />
+          <Skeleton h={140} />
+          <Skeleton h={110} />
         </div>
       )}
 
       {!friendsLoading && !feed.loading && friendIds.length === 0 && filter !== 'me' && (
-        <Empty title="NO FRIENDS YET">
-          <p>The feed shows you and the people you add. <Link to="/friends">Create an invite link →</Link></p>
-        </Empty>
+        <div className="panel"><Empty icon="👋" title="Invite your friends">
+          <p>Your feed shows updates from you and your friends.</p>
+          <Link className="btn primary" to="/friends">Invite friends</Link>
+        </Empty></div>
       )}
 
       {!feed.loading && feed.posts.length === 0 && (filter === 'me' || friendIds.length > 0) && (
-        <Empty title="NOTHING HERE YET">
-          <p>Log a workout, close a day in your food log, or post a progress photo.</p>
-        </Empty>
+        <div className="panel"><Empty icon="🌱" title="Nothing here yet">
+          <p style={{ margin: 0 }}>Log a workout, complete a day in your diary, or post a progress photo.</p>
+        </Empty></div>
       )}
 
       {feed.posts.map((p) => (
@@ -76,7 +77,7 @@ export default function Feed() {
 
       {feed.hasMore && (
         <button className="btn block" onClick={() => setPage((n) => n + 15)} disabled={feed.refreshing}>
-          {feed.refreshing ? 'LOADING…' : '↓ LOAD OLDER'}
+          {feed.refreshing ? 'Loading…' : 'Load older posts'}
         </button>
       )}
     </div>
@@ -122,11 +123,14 @@ function Composer() {
   if (!open) {
     return (
       <div className="panel">
-        <div className="panel-h"><span className="t">NEW POST</span></div>
-        <div className="row" style={{ padding: 8, gap: 8 }}>
-          <button className="btn grow" onClick={() => start(false)}>+ STATUS</button>
-          <button className="btn grow" onClick={() => start(true)}>+ PHOTO</button>
-          <button className="btn accent grow" onClick={() => start(true, true)}>+ PROGRESS</button>
+        <div className="col" style={{ padding: 12, gap: 10 }}>
+          <button className="row" onClick={() => start(false)} style={{ border: 0, background: 'var(--hover)', borderRadius: 999, padding: '10px 16px', color: 'var(--muted)', cursor: 'text', textAlign: 'left' }}>
+            Share an update…
+          </button>
+          <div className="row">
+            <button className="btn ghost sm grow" onClick={() => start(true)}><Icon name="camera" size={18} /> Photo</button>
+            <button className="btn soft sm grow" onClick={() => start(true, true)}>📈 Progress photo</button>
+          </div>
         </div>
       </div>
     );
@@ -135,13 +139,13 @@ function Composer() {
   return (
     <div className="panel">
       <div className="panel-h">
-        <span className="t">NEW POST</span><span className="sp" />
-        <button className="btn ghost sm" onClick={() => setOpen(false)}>✕</button>
+        <span className="t">{progress ? 'Progress photo' : 'New post'}</span><span className="sp" />
+        <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Cancel"><Icon name="close" size={20} /></button>
       </div>
       <div className="panel-b col">
         <textarea
           autoFocus
-          placeholder={progress ? 'How are you feeling about your progress?' : 'Short update…'}
+          placeholder={progress ? 'How are you feeling about your progress?' : "What's new?"}
           value={text}
           maxLength={1000}
           onChange={(e) => setText(e.target.value)}
@@ -163,27 +167,29 @@ function Composer() {
             {previews.map((u, i) => u && (
               <button key={u} type="button" onClick={() => setFiles((f) => f.filter((_, j) => j !== i))} title="Remove">
                 <img src={u} alt="" />
-                <span className="cap"><span>#{i + 1}</span><span>✕ REMOVE</span></span>
+                <span className="cap"><span /><span>Remove ✕</span></span>
               </button>
             ))}
           </div>
         )}
         <div className="row wrap">
           <button className="btn sm" onClick={() => fileRef.current?.click()} disabled={files.length >= 4}>
-            + PHOTO {files.length}/4
+            <Icon name="camera" size={16} /> {files.length ? `Add photo (${files.length}/4)` : 'Add photo'}
           </button>
-          {files.length > 0 && <Toggle on={progress} onChange={setProgress} label="PROGRESS PHOTO" />}
-          {files.length > 0 && progress && <Toggle on={attachWeight} onChange={setAttachWeight} label="ATTACH WEIGHT" />}
+        </div>
+        <div className="col" style={{ gap: 10 }}>
+          {files.length > 0 && <Toggle on={progress} onChange={setProgress} label="Progress photo" />}
+          {files.length > 0 && progress && <Toggle on={attachWeight} onChange={setAttachWeight} label="Include my current weight" />}
         </div>
         <div className="row between wrap">
-          <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '◉ FRIENDS' }, { v: 'private', l: '○ ONLY ME' }]} />
-          <ActionButton variant="primary" state={post.state} onClick={() => post.run()} pendingLabel={files.length ? 'UPLOADING' : 'POSTING'} doneLabel="POSTED">
-            POST →
+          <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '👥 Friends' }, { v: 'private', l: '🔒 Only me' }]} />
+          <ActionButton variant="primary" state={post.state} onClick={() => post.run()} pendingLabel={files.length ? 'Uploading…' : 'Posting…'} doneLabel="Posted">
+            Post
           </ActionButton>
         </div>
         {post.state === 'pending' && files.length > 0 && <UploadProgress pct={pct} />}
         <ErrorLine>{post.error}</ErrorLine>
-        {progress && <p className="small muted">Progress photos collect on your profile timeline so you can compare before/after. Photos are resized and stripped of location data before upload.</p>}
+        {progress && <p className="small muted" style={{ margin: 0 }}>Progress photos appear on your profile timeline, where you can compare before and after.</p>}
       </div>
     </div>
   );

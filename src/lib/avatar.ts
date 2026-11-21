@@ -7,22 +7,21 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
-/** Deterministic 5×5 mirrored block avatar as an SVG data URL. */
-export function generatedAvatar(seed: string): string {
-  let h = hash(seed || 'x');
-  const hue = h % 360;
-  const fg = `hsl(${hue} 70% 45%)`;
-  const cells: string[] = [];
-  for (let y = 0; y < 5; y++) {
-    for (let x = 0; x < 3; x++) {
-      h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
-      if (h & 1) {
-        cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
-        if (x < 2) cells.push(`<rect x="${4 - x}" y="${y}" width="1" height="1"/>`);
-      }
-    }
-  }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 6 6" shape-rendering="crispEdges"><rect x="-0.5" y="-0.5" width="6" height="6" fill="#f4f3ee"/><g fill="${fg}">${cells.join('')}</g></svg>`;
+const COLORS = ['#f26b3a', '#16a34a', '#2563eb', '#7c3aed', '#db2777', '#0891b2', '#ca8a04', '#dc2626', '#4f46e5', '#059669'];
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  const a = parts[0][0] ?? '';
+  const b = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (a + b).toUpperCase();
+}
+
+/** Coloured circle with initials, as an SVG data URL. */
+export function generatedAvatar(seed: string, name = ''): string {
+  const bg = COLORS[hash(seed || 'x') % COLORS.length];
+  const text = initials(name || '?');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="${bg}"/><text x="32" y="33" text-anchor="middle" dominant-baseline="central" font-family="Inter,system-ui,sans-serif" font-size="${text.length > 1 ? 24 : 28}" font-weight="600" fill="#fff">${text.replace(/[<&>]/g, '')}</text></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

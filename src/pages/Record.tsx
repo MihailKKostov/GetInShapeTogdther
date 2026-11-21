@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ActivityType } from '../data/types';
 import { ActivityForm, type ActivityDraft } from '../components/ActivityForm';
 import { RouteTrace } from '../components/RouteTrace';
-import { ErrorLine, Panel, Spinner } from '../components/ui';
+import { ErrorLine, Icon, Panel, Spinner } from '../components/ui';
 import { useMe } from '../hooks/useSession';
 import { fmtDuration } from '../lib/dates';
 import { elevationGain, haversine, pathDistance, type GeoPoint } from '../lib/geo';
@@ -122,32 +122,32 @@ export default function Record() {
   return (
     <div className="page">
       <div className="row between">
-        <button className="btn sm" onClick={() => nav('/move')}>← ACTIVITIES</button>
-        <span className="small">
-          {status === 'recording' && <><span className="rec-dot" /> REC</>}
-          {status === 'acquiring' && <><Spinner /> ACQUIRING GPS</>}
-          {status === 'paused' && 'PAUSED'}
-          {status === 'idle' && 'READY'}
-          {accuracy != null && <span className="muted"> · ±{Math.round(accuracy)}m</span>}
+        <button className="btn ghost sm" style={{ paddingLeft: 0 }} onClick={() => nav('/move')}><Icon name="left" size={18} /> Exercise</button>
+        <span className="small row">
+          {status === 'recording' && <><span className="rec-dot" /> Recording</>}
+          {status === 'acquiring' && <><Spinner /> Finding GPS…</>}
+          {status === 'paused' && <span className="pill warn">Paused</span>}
+          {status === 'idle' && <span className="muted">Ready</span>}
+          {accuracy != null && <span className="muted">±{Math.round(accuracy)} m</span>}
         </span>
       </div>
 
       {status === 'idle' && (
         <div className="row wrap" style={{ gap: 4 }}>
           {(['run', 'ride', 'walk', 'hike'] as ActivityType[]).map((t) => (
-            <button key={t} className={`btn ${type === t ? 'on' : ''}`} onClick={() => setType(t)}>{ACTIVITY_TYPES[t].label}</button>
+            <button key={t} className={`btn ${type === t ? 'on' : ''}`} onClick={() => setType(t)}>{ACTIVITY_TYPES[t].glyph} {ACTIVITY_TYPES[t].label}</button>
           ))}
         </div>
       )}
 
-      <Panel title={meta.label} idx="●" tight>
+      <Panel title={`${meta.glyph} ${meta.label}`}>
         <div className="stats c2">
-          <div className="stat"><div className="k">TIME</div><div className="rec-big">{fmtDuration(elapsed)}</div></div>
-          <div className="stat"><div className="k">DISTANCE</div><div className="rec-big">{fmtNum(mTo(units, dist), 2)}<small style={{ fontSize: 14 }} className="muted"> {distUnit(units)}</small></div></div>
-          <div className="stat"><div className="k">{speedish ? 'SPEED · 60S' : 'PACE · 60S'}</div><div className="v">{speedish ? fmtSpeed(units, recent.d, recent.dt) : fmtPace(units, recent.d, recent.dt)}</div></div>
-          <div className="stat"><div className="k">{speedish ? 'AVG SPEED' : 'AVG PACE'}</div><div className="v">{speedish ? fmtSpeed(units, dist, elapsed) : fmtPace(units, dist, elapsed)}</div></div>
-          <div className="stat"><div className="k">ELEV GAIN</div><div className="v">{fmtElev(units, elevationGain(points))}</div></div>
-          <div className="stat"><div className="k">POINTS</div><div className="v">{points.length}</div></div>
+          <div className="stat"><div className="k">Time</div><div className="rec-big">{fmtDuration(elapsed)}</div></div>
+          <div className="stat"><div className="k">Distance</div><div className="rec-big">{fmtNum(mTo(units, dist), 2)}<small style={{ fontSize: 15 }} className="muted"> {distUnit(units)}</small></div></div>
+          <div className="stat"><div className="k">{speedish ? 'Current speed' : 'Current pace'}</div><div className="v">{speedish ? fmtSpeed(units, recent.d, recent.dt) : fmtPace(units, recent.d, recent.dt)}</div></div>
+          <div className="stat"><div className="k">{speedish ? 'Avg speed' : 'Avg pace'}</div><div className="v">{speedish ? fmtSpeed(units, dist, elapsed) : fmtPace(units, dist, elapsed)}</div></div>
+          <div className="stat"><div className="k">Elevation</div><div className="v">{fmtElev(units, elevationGain(points))}</div></div>
+          <div className="stat"><div className="k">GPS points</div><div className="v">{points.length}</div></div>
         </div>
       </Panel>
 
@@ -155,17 +155,17 @@ export default function Record() {
       <ErrorLine>{err}</ErrorLine>
 
       <div className="row" style={{ gap: 8 }}>
-        {status === 'idle' && <button className="btn accent lg block" onClick={begin}>● START</button>}
-        {(status === 'recording' || status === 'acquiring') && <button className="btn primary lg block" onClick={pause}>❚❚ PAUSE</button>}
+        {status === 'idle' && <button className="btn primary lg block" onClick={begin}>Start</button>}
+        {(status === 'recording' || status === 'acquiring') && <button className="btn lg block" onClick={pause}>Pause</button>}
         {status === 'paused' && (
           <>
-            <button className="btn lg" onClick={discard}>DISCARD</button>
-            <button className="btn lg grow" onClick={begin}>▶ RESUME</button>
-            <button className="btn accent lg grow" onClick={finish} disabled={elapsed < 1}>■ FINISH</button>
+            <button className="btn ghost danger lg" onClick={discard}>Discard</button>
+            <button className="btn lg grow" onClick={begin}>Resume</button>
+            <button className="btn primary lg grow" onClick={finish} disabled={elapsed < 1}>Finish</button>
           </>
         )}
       </div>
-      <p className="small muted">Keep this tab open with the screen on while recording — browsers pause GPS for background tabs. Your progress is saved on this device if the page reloads.</p>
+      <p className="small muted">Keep this page open with the screen on while recording — browsers pause GPS in background tabs.</p>
 
       {draft && (
         <ActivityForm

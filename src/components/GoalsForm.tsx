@@ -28,9 +28,9 @@ export const DEFAULT_SETTINGS: PrivateSettings = {
 };
 
 const PRESETS: { l: string; p: PrivateSettings['macroPct'] }[] = [
-  { l: 'BALANCED 30/40/30', p: { protein: 30, carbs: 40, fat: 30 } },
-  { l: 'HIGH PROTEIN 40/30/30', p: { protein: 40, carbs: 30, fat: 30 } },
-  { l: 'LOW CARB 35/20/45', p: { protein: 35, carbs: 20, fat: 45 } },
+  { l: 'Balanced', p: { protein: 30, carbs: 40, fat: 30 } },
+  { l: 'High protein', p: { protein: 40, carbs: 30, fat: 30 } },
+  { l: 'Low carb', p: { protein: 35, carbs: 20, fat: 45 } },
 ];
 
 /** Controlled goals editor. `weightKg` is the latest/current weight used for calculations. */
@@ -51,10 +51,10 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
     <div className="col gap2">
       <div className="fgrid">
         <div className="f"><span className="flabel">Units</span>
-          <Seg<Units> value={u} onChange={(v) => set('units', v)} options={[{ v: 'metric', l: 'KG / KM' }, { v: 'imperial', l: 'LB / MI' }]} />
+          <Seg<Units> value={u} onChange={(v) => set('units', v)} options={[{ v: 'metric', l: 'kg / km' }, { v: 'imperial', l: 'lb / mi' }]} />
         </div>
-        <div className="f"><span className="flabel">Sex (for BMR)</span>
-          <Seg<Sex> value={s.sex} onChange={(v) => set('sex', v)} options={[{ v: 'male', l: 'MALE' }, { v: 'female', l: 'FEMALE' }]} />
+        <div className="f"><span className="flabel">Sex (for calorie calculation)</span>
+          <Seg<Sex> value={s.sex} onChange={(v) => set('sex', v)} options={[{ v: 'male', l: 'Male' }, { v: 'female', l: 'Female' }]} />
         </div>
       </div>
       <div className="fgrid">
@@ -70,7 +70,7 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
       </label>
       <div className="fgrid">
         <div className="f"><span className="flabel">Goal</span>
-          <Seg<GoalType> value={s.goalType} onChange={(v) => set('goalType', v)} options={[{ v: 'lose', l: 'LOSE' }, { v: 'maintain', l: 'MAINTAIN' }, { v: 'gain', l: 'GAIN' }]} />
+          <Seg<GoalType> value={s.goalType} onChange={(v) => set('goalType', v)} options={[{ v: 'lose', l: 'Lose' }, { v: 'maintain', l: 'Maintain' }, { v: 'gain', l: 'Gain' }]} />
         </div>
         {s.goalType !== 'maintain' && (
           <label className="f"><span>Rate per week</span>
@@ -81,24 +81,22 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
         )}
       </div>
 
-      <table className="kv" style={{ border: '1px solid var(--line)' }}>
-        <tbody>
-          <tr><th>BMR (Mifflin–St Jeor)</th><td className="n">{fmtNum(bmr(s, weightKg))} kcal</td></tr>
-          <tr><th>TDEE (maintenance)</th><td className="n">{fmtNum(tdee(s, weightKg))} kcal</td></tr>
-          <tr><th>SUGGESTED GOAL</th><td className="n"><b>{fmtNum(suggested)} kcal</b></td></tr>
-        </tbody>
-      </table>
+      <div className="stats c3">
+        <div className="stat"><div className="k">Resting (BMR)</div><div className="v">{fmtNum(bmr(s, weightKg))}<small> kcal</small></div></div>
+        <div className="stat"><div className="k">Maintenance</div><div className="v">{fmtNum(tdee(s, weightKg))}<small> kcal</small></div></div>
+        <div className="stat" style={{ background: 'var(--primary-soft)' }}><div className="k">Suggested</div><div className="v accent">{fmtNum(suggested)}<small> kcal</small></div></div>
+      </div>
 
       <div className="col">
         <div className="row between wrap">
           <span className="flabel">Daily calorie goal</span>
-          <Toggle on={s.calorieGoalAuto} onChange={(v) => { const n = { ...s, calorieGoalAuto: v }; if (v) n.calorieGoal = suggested; onChange(n); }} label="AUTO" />
+          <Toggle on={s.calorieGoalAuto} onChange={(v) => { const n = { ...s, calorieGoalAuto: v }; if (v) n.calorieGoal = suggested; onChange(n); }} label="Use suggested" />
         </div>
         <NumInput value={s.calorieGoal} onChange={(v) => v !== '' && onChange({ ...s, calorieGoal: Math.round(v), calorieGoalAuto: false })} unit="kcal" />
       </div>
 
       <div className="col">
-        <span className="flabel">Macro split — {macroSum}% {macroSum !== 100 && <span className="bad">(must total 100)</span>}</span>
+        <span className="flabel">Macro split {macroSum !== 100 && <span className="bad">(must add up to 100%, now {macroSum}%)</span>}</span>
         <div className="row wrap" style={{ gap: 4 }}>
           {PRESETS.map((p) => (
             <button key={p.l} className={`btn sm ${JSON.stringify(p.p) === JSON.stringify(s.macroPct) ? 'on' : ''}`} onClick={() => onChange({ ...s, macroPct: p.p })}>{p.l}</button>
@@ -106,7 +104,7 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
         </div>
         <div className="fgrid">
           {(['protein', 'carbs', 'fat'] as const).map((k) => (
-            <label key={k} className="f"><span>{k} · {grams[k]} g</span>
+            <label key={k} className="f"><span>{k[0].toUpperCase() + k.slice(1)} · {grams[k]} g</span>
               <NumInput value={s.macroPct[k]} onChange={(v) => onChange({ ...s, macroPct: { ...s.macroPct, [k]: Number(v) || 0 } })} unit="%" />
             </label>
           ))}
@@ -120,13 +118,13 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
       </div>
 
       <div className="col">
-        <span className="flabel">"On target" band — a closed day counts toward your streak if calories land within</span>
+        <span className="flabel">A completed day counts as on target when calories are within:</span>
         <div className="fgrid">
           <label className="f"><span>Under budget by up to</span><NumInput value={s.bandLowerPct} onChange={(v) => onChange({ ...s, bandLowerPct: Math.min(50, Number(v) || 0) })} unit="%" /></label>
           <label className="f"><span>Over budget by up to</span><NumInput value={s.bandUpperPct} onChange={(v) => onChange({ ...s, bandUpperPct: Math.min(50, Number(v) || 0) })} unit="%" /></label>
         </div>
         <div className="row wrap">
-          <Toggle on={s.addExerciseCalories} onChange={(v) => onChange({ ...s, addExerciseCalories: v })} label="ADD EXERCISE KCAL TO BUDGET" />
+          <Toggle on={s.addExerciseCalories} onChange={(v) => onChange({ ...s, addExerciseCalories: v })} label="Add exercise calories to my daily target" />
         </div>
       </div>
     </div>
