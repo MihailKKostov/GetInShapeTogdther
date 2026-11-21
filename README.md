@@ -47,7 +47,35 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
 3. **Firestore Database:** create the database (production mode). The rules and indexes are deployed from this repo.
 4. **Storage:** create the default bucket. Its rules are deployed from this repo.
 5. **Project settings → General → Your apps:** add a **Web app** and copy its config values.
-6. **Service account for CI:** in Google Cloud Console → IAM → Service Accounts, create one with the roles **Firebase Admin** and **Service Usage Consumer**. Then create a JSON key for it.
+6. **CI access (no key files):** GitHub Actions signs in to Google with Workload Identity Federation, so it works even when your organisation blocks service-account keys. Open [Cloud Shell](https://shell.cloud.google.com) and run the following, with your project ID filled in:
+
+   ```bash
+   PROJECT_ID=your-project-id
+   REPO=MihailKKostov/GetInShapeTogdther
+   gcloud config set project "$PROJECT_ID"
+   PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+   SA="github-deploy@$PROJECT_ID.iam.gserviceaccount.com"
+
+   gcloud services enable iamcredentials.googleapis.com sts.googleapis.com
+   gcloud iam service-accounts create github-deploy --display-name="GitHub deploy" || true
+   for ROLE in roles/firebase.admin roles/serviceusage.serviceUsageConsumer; do
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" --role="$ROLE" --condition=None >/dev/null
+   done
+
+   gcloud iam workload-identity-pools create github --location=global --display-name="GitHub"
+   gcloud iam workload-identity-pools providers create-oidc github-repo \
+     --location=global --workload-identity-pool=github --display-name="GitHub repo" \
+     --issuer-uri="https://token.actions.githubusercontent.com" \
+     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+     --attribute-condition="assertion.repository=='$REPO'"
+   gcloud iam service-accounts add-iam-policy-binding "$SA" --role=roles/iam.workloadIdentityUser \
+     --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
+
+   echo "GCP_WORKLOAD_IDENTITY_PROVIDER = projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/github-repo"
+   echo "GCP_SERVICE_ACCOUNT            = $SA"
+   ```
+
+   Only workflows from this exact repository can use the service account.
 
 ## GitHub setup
 
@@ -55,7 +83,8 @@ Add these **repository secrets** (Settings → Secrets and variables → Actions
 
 | Secret | Value |
 | --- | --- |
-| `FIREBASE_SERVICE_ACCOUNT` | the whole JSON key file |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | printed by the Cloud Shell script (`projects/…/providers/github-repo`) |
+| `GCP_SERVICE_ACCOUNT` | printed by the Cloud Shell script (`github-deploy@….iam.gserviceaccount.com`) |
 | `FIREBASE_PROJECT_ID` | e.g. `gist-friends` |
 | `VITE_FIREBASE_API_KEY` | from the web app config |
 | `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `gist-friends.firebaseapp.com` |
@@ -67,7 +96,7 @@ The workflow is `.github/workflows/deploy.yml`:
 
 - **Every push and PR:** typecheck, production build, and the security rules test suite against the Firebase emulators.
 - **Push to `main`:** deploys Hosting, Firestore rules and indexes, and Storage rules.
-- **PRs from this repo:** deploys a preview channel (expires after 7 days) and posts its URL on the PR. Google sign-in on preview URLs only works if you add that domain to Auth's authorized domains; email sign-in works everywhere.
+- **PRs from this repo:** deploys a preview channel that expires after 7 days. Its URL appears in the workflow run summary. Google sign-in on preview URLs only works if you add that domain to Auth's authorized domains; email sign-in works everywhere.
 
 Then share `https://<project-id>.web.app` with your friends. Each person signs in, completes the 2-minute setup, and sends invite links from the **Friends** tab.
 
