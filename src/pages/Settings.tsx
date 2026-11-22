@@ -1,3 +1,4 @@
+import { InstallPanel } from '../components/Install';
 import { useEffect, useRef, useState } from 'react';
 import { useAiSettings } from '../components/PhotoTab';
 import { AI_MODELS, aiSettings, testKey } from '../lib/foodPhoto';
@@ -24,6 +25,7 @@ export default function Settings() {
       <PrivacySection />
       <AiSection />
       <AppearanceSection />
+      <InstallPanel />
       <AccountSection />
     </div>
   );
@@ -132,6 +134,7 @@ const PRIVACY_ROWS: { k: keyof Sharing; l: string; d: string }[] = [
   { k: 'calorieGoal', l: 'Calorie goal', d: 'Daily kcal target' },
   { k: 'diary', l: 'Food log', d: 'Daily calories, on-target calendar and what you ate' },
   { k: 'activities', l: 'Activity history', d: 'Workouts you didn\'t mark private' },
+  { k: 'recipes', l: 'Recipe book', d: 'Friends can browse your recipes and copy them (not your plan, groceries or pantry)' },
 ];
 
 function PrivacySection() {

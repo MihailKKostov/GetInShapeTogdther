@@ -136,11 +136,13 @@ export function analyzeFoodText(
   return estimate(TEXT_INSTRUCTIONS, [{ type: 'text', text: description.trim().slice(0, 1500) }], opts);
 }
 
-async function estimate(
+/** One structured-output request to OpenAI's Chat Completions API. Shared by every AI feature. */
+export async function openAiJson<T>(
   instructions: string,
   content: unknown[],
+  schema: { name: string; schema: object },
   opts: { key: string; model: string; signal?: AbortSignal },
-): Promise<PhotoResult> {
+): Promise<{ data: T; model: string }> {
   const res = await fetch(`${API}/chat/completions`, {
     method: 'POST',
     signal: opts.signal,
@@ -151,7 +153,7 @@ async function estimate(
         { role: 'system', content: instructions },
         { role: 'user', content },
       ],
-      response_format: { type: 'json_schema', json_schema: { name: 'meal_estimate', strict: true, schema: SCHEMA } },
+      response_format: { type: 'json_schema', json_schema: { name: schema.name, strict: true, schema: schema.schema } },
     }),
   }).catch((e) => {
     if ((e as Error)?.name === 'AbortError') throw e;
@@ -162,8 +164,15 @@ async function estimate(
   const data = JSON.parse(body) as { model?: string; choices?: { message?: { content?: string; refusal?: string } }[] };
   const msg = data.choices?.[0]?.message;
   if (msg?.refusal) throw new AiError(`OpenAI declined: ${msg.refusal}`);
-  let parsed: { items?: PhotoItem[]; note?: string };
-  try { parsed = JSON.parse(msg?.content ?? ''); } catch { throw new AiError('OpenAI returned an unexpected answer. Try again.'); }
+  try { return { data: JSON.parse(msg?.content ?? '') as T, model: data.model ?? opts.model }; } catch { throw new AiError('OpenAI returned an unexpected answer. Try again.'); }
+}
+
+async function estimate(
+  instructions: string,
+  content: unknown[],
+  opts: { key: string; model: string; signal?: AbortSignal },
+): Promise<PhotoResult> {
+  const { data: parsed, model } = await openAiJson<{ items?: PhotoItem[]; note?: string }>(instructions, content, { name: 'meal_estimate', schema: SCHEMA }, opts);
   const items = (parsed.items ?? [])
     .filter((i) => i && i.name && Number.isFinite(i.kcal))
     .map((i) => ({
@@ -176,5 +185,5 @@ async function estimate(
       fiber: Math.max(0, Math.round(i.fiber)),
       confidence: (['high', 'medium', 'low'] as const).includes(i.confidence) ? i.confidence : 'medium',
     }));
-  return { items, note: parsed.note ?? '', model: data.model ?? opts.model };
+  return { items, note: parsed.note ?? '', model };
 }

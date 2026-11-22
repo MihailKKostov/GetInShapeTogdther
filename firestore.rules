@@ -7,6 +7,8 @@ rules_version = '2';
 // - users/{uid}/diary/*          owner; friends only if sharing.diary
 // - users/{uid}/foods/*          owner only (custom foods)
 // - users/{uid}/activities/*     owner; friends if sharing.activities and visibility == 'friends'
+// - users/{uid}/recipes/*        owner; friends can read unless sharing.recipes is false
+// - users/{uid}/groceryLists, groceryItems, mealPlan, pantry, menus: owner only
 // - users/{uid}/friends/*        created in pairs through an invite; either side can remove
 // - posts/*                      author; friends when visibility == 'friends'
 // - posts/*/reactions/{uid}      each user only writes their own reaction doc
@@ -88,11 +90,15 @@ service cloud.firestore {
         allow write: if isMe(uid);
       }
 
-      // RecipeMan data: recipes, grocery lists, meal plan, pantry and menus are private to the owner.
-      // (Recipes are shared with friends by posting a copy to the feed.)
+      // RecipeMan data: recipes, grocery lists, meal plan, pantry and menus belong to the owner.
       match /{collection}/{docId} {
         allow read, write: if isMe(uid)
           && collection in ['recipes', 'groceryLists', 'groceryItems', 'mealPlan', 'pantry', 'menus'];
+      }
+
+      // Friends can browse the recipe book (read only) unless it's switched off; on by default.
+      match /recipes/{recipeId} {
+        allow read: if isFriendOf(uid) && sharingOf(uid).get('recipes', true) == true;
       }
 
       match /friends/{friendId} {

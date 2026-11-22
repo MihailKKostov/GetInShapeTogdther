@@ -56,7 +56,8 @@ export default function Library() {
     <div className="page">
       <RecipesNav />
       <div className="row">
-        <Link className="btn primary grow" to="/recipes/new"><Icon name="plus" size={18} stroke={2.4} /> New recipe</Link>
+        <Link className="btn primary grow" to="/recipes/new"><Icon name="plus" size={18} stroke={2.4} /> New</Link>
+        <Link className="btn grow" to="/recipes/import?mode=photo"><Icon name="camera" size={18} /> Photo</Link>
         <Link className="btn grow" to="/recipes/import"><Icon name="upload" size={18} /> Import</Link>
         <button className="btn" onClick={random} disabled={!recipes.data.length} title="Random recipe" aria-label="Random recipe">🎲</button>
       </div>

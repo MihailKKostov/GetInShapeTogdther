@@ -1,3 +1,4 @@
+import { InstallHint } from '../components/Install';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPost, latestWeight, uploadPostPhotos } from '../data/api';
@@ -31,6 +32,7 @@ export default function Feed() {
 
   return (
     <div className="page">
+      <InstallHint />
       <Composer />
       <div className="row between wrap">
         <Seg<Filter>

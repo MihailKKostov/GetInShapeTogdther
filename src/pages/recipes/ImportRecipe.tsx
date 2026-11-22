@@ -11,7 +11,11 @@ import { nutritionToText } from '../../lib/recipes/nutritionText';
 import { readPaprikaExport, type PaprikaRecipe } from '../../lib/recipes/paprika';
 import { RecipesNav } from './bits';
 import { useRecipes } from './data';
-import { DRAFT_KEY } from './RecipeEditor';
+import { DRAFT_AI_NOTE_KEY, DRAFT_KEY } from './RecipeEditor';
+import { useAiSettings } from '../../components/PhotoTab';
+import { useObjectUrls } from '../../hooks/useObjectUrls';
+import { blobToDataUrl, resizeImage } from '../../lib/images';
+import { recipeFromPhotos } from '../../lib/recipes/aiRecipe';
 
 /** Pull a URL out of shared text ("Look at this https://…"). */
 function findUrl(...vals: (string | null)[]): string {
@@ -22,16 +26,18 @@ function findUrl(...vals: (string | null)[]): string {
   return '';
 }
 
+type Mode = 'photo' | 'link' | 'paprika';
+
 export default function ImportRecipe() {
   const [params] = useSearchParams();
   const shared = findUrl(params.get('url'), params.get('text'), params.get('title'));
-  const [mode, setMode] = useState<'link' | 'paprika'>('link');
+  const [mode, setMode] = useState<Mode>(() => (params.get('mode') === 'photo' ? 'photo' : params.get('mode') === 'paprika' ? 'paprika' : 'link'));
   return (
     <div className="page">
       <RecipesNav />
-      <h1>Import recipes</h1>
-      <Seg block value={mode} onChange={setMode} options={[{ v: 'link', l: '🔗 From a link' }, { v: 'paprika', l: '🌶 From Paprika' }]} />
-      {mode === 'link' ? <LinkImport initialUrl={shared} /> : <PaprikaImport />}
+      <h1>Add recipes</h1>
+      <Seg block value={mode} onChange={setMode} options={[{ v: 'photo', l: '📷 Photo' }, { v: 'link', l: '🔗 Link' }, { v: 'paprika', l: '🌶 Paprika' }]} />
+      {mode === 'photo' ? <PhotoRecipe /> : mode === 'link' ? <LinkImport initialUrl={shared} /> : <PaprikaImport />}
     </div>
   );
 }
@@ -193,6 +199,121 @@ function PaprikaImport() {
             )}
           </>
         )}
+      </div>
+    </Panel>
+  );
+}
+
+const MAX_PHOTOS = 4;
+
+/** Photo of a dish or of a written recipe → AI recipe draft → editor to review and tweak. */
+function PhotoRecipe() {
+  const { uid } = useMe();
+  const nav = useNavigate();
+  const { key, model } = useAiSettings();
+  const camRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [hint, setHint] = useState('');
+  const [stage, setStage] = useState<'reading' | 'saving' | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  // Fixed-length argument: the hook uses it as effect dependencies.
+  const previews = useObjectUrls(Array.from({ length: MAX_PHOTOS }, (_, i) => files[i])).slice(0, files.length);
+  useEffect(() => () => abort.current?.abort(), []);
+
+  if (!key) {
+    return (
+      <Panel title="From a photo">
+        <div className="col">
+          <p className="small muted" style={{ margin: 0 }}>
+            Take a photo of a dish, or of a recipe in a cookbook or on a card, and AI drafts the whole recipe: ingredients with
+            amounts, steps, times and nutrition per serving, ready for you to adjust. This uses your own OpenAI API key, which you add once in Settings.
+          </p>
+          <Link className="btn primary" to="/settings#ai">Add OpenAI key in Settings</Link>
+        </div>
+      </Panel>
+    );
+  }
+
+  const add = (list: FileList | null) => {
+    const picked = Array.from(list ?? []).filter((f) => f.type.startsWith('image/'));
+    if (!picked.length) return;
+    setErr(null);
+    setFiles((cur) => [...cur, ...picked].slice(0, MAX_PHOTOS));
+  };
+
+  const run = async () => {
+    abort.current?.abort();
+    const ctl = new AbortController();
+    abort.current = ctl;
+    setErr(null); setStage('reading');
+    try {
+      const images = await Promise.all(files.map(async (f) => blobToDataUrl((await resizeImage(f, 1280, 'image/jpeg', 0.85)).blob)));
+      const res = await recipeFromPhotos(images, { key, model, hint, signal: ctl.signal });
+      if (res.kind === 'not_food' || !res.recipe.ingredients) throw new Error(res.note || 'No dish or recipe found in that photo. Try another one.');
+      const draft = res.recipe;
+      // A photo of the dish becomes the recipe photo; photos of a cookbook page aren't kept.
+      if (res.kind === 'dish') {
+        setStage('saving');
+        try { const ph = await uploadRecipePhoto(uid, files[0]); draft.imageUrl = ph.url; Object.assign(draft, { imagePath: ph.path }); }
+        catch (e) { console.warn('photo upload failed', e); }
+      } else {
+        draft.notes = 'Transcribed from a photo.';
+      }
+      if (ctl.signal.aborted) return;
+      try {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        sessionStorage.setItem(DRAFT_AI_NOTE_KEY, res.note);
+      } catch { /* ignore */ }
+      nav('/recipes/new?draft=1');
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return;
+      setErr(e instanceof Error ? e.message : 'Something went wrong');
+      setStage(null);
+    }
+  };
+
+  return (
+    <Panel title="From a photo">
+      <div className="col">
+        <p className="small muted" style={{ margin: 0 }}>
+          Photograph a <b>dish</b> and AI writes a recipe that would make it, or photograph a <b>recipe</b> (cookbook page, card,
+          screenshot; up to {MAX_PHOTOS} pages) and it's typed out for you. Either way you get ingredients, steps and estimated
+          nutrition per serving to check and adjust before saving.
+        </p>
+        <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { add(e.target.files); e.target.value = ''; }} />
+        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ''; }} />
+        {files.length > 0 && (
+          <div className="pgrid">
+            {files.map((_, i) => (
+              <div key={i} style={{ position: 'relative' }}>
+                {previews[i] && <img src={previews[i]} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} />}
+                {!stage && <button type="button" className="btn sm" style={{ position: 'absolute', right: 4, bottom: 4 }} onClick={() => setFiles((x) => x.filter((_, j) => j !== i))} aria-label="Remove photo">✕</button>}
+              </div>
+            ))}
+          </div>
+        )}
+        {files.length < MAX_PHOTOS && !stage && (
+          <div className="row">
+            <button className="btn grow" onClick={() => camRef.current?.click()}><Icon name="camera" size={18} /> Take photo</button>
+            <button className="btn grow" onClick={() => fileRef.current?.click()}><Icon name="upload" size={18} /> Choose {files.length ? 'more' : 'photos'}</button>
+          </div>
+        )}
+        <label className="f"><span>Anything to add? (optional)</span>
+          <textarea rows={2} value={hint} onChange={(e) => setHint(e.target.value)} disabled={!!stage}
+            placeholder="e.g. serves 4, made with turkey mince, no cream" maxLength={500} />
+        </label>
+        <ErrorLine>{err}</ErrorLine>
+        {stage ? (
+          <div className="row">
+            <span className="small muted row grow"><Spinner /> {stage === 'reading' ? 'Writing your recipe… this takes 10–40 seconds' : 'Saving the photo…'}</span>
+            <button className="btn ghost sm" onClick={() => { abort.current?.abort(); setStage(null); }}>Cancel</button>
+          </div>
+        ) : (
+          <button className="btn primary" onClick={run} disabled={!files.length}>✨ Create recipe</button>
+        )}
+        <span className="small muted">Uses {model} with your OpenAI key; the photos go straight from this device to OpenAI.</span>
       </div>
     </Panel>
   );

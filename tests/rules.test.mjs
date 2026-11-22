@@ -177,15 +177,34 @@ describe('shared vs private data', () => {
 });
 
 describe('recipes, grocery, meal plan, pantry, menus', () => {
-  test('private to the owner — friends cannot read or write', async () => {
+  test('grocery lists, meal plan, pantry and menus are owner-only', async () => {
     await seedUsers();
-    for (const col of ['recipes', 'groceryLists', 'groceryItems', 'mealPlan', 'pantry', 'menus']) {
+    for (const col of ['groceryLists', 'groceryItems', 'mealPlan', 'pantry', 'menus']) {
       await assertSucceeds(setDoc(doc(db('alice'), `users/alice/${col}/x1`), { name: 'mine' }));
       await assertSucceeds(getDoc(doc(db('alice'), `users/alice/${col}/x1`)));
       await assertFails(getDoc(doc(db('bob'), `users/alice/${col}/x1`)));
       await assertFails(setDoc(doc(db('bob'), `users/alice/${col}/x2`), { name: 'not yours' }));
     }
     await assertFails(setDoc(doc(db('alice'), 'users/alice/somethingElse/x1'), { a: 1 }));
+  });
+  test('friends can browse (not change) the recipe book unless it is switched off', async () => {
+    await seedUsers();
+    await assertSucceeds(setDoc(doc(db('alice'), 'users/alice/recipes/x1'), { name: 'Soup' }));
+    // On by default, including older profiles without the setting.
+    await assertSucceeds(getDoc(doc(db('bob'), 'users/alice/recipes/x1')));
+    await assertSucceeds(getDocs(collection(db('bob'), 'users/alice/recipes')));
+    await seed((a) => updateDoc(doc(a, 'users/alice'), { 'sharing.recipes': true }));
+    await assertSucceeds(getDoc(doc(db('bob'), 'users/alice/recipes/x1')));
+    await assertFails(setDoc(doc(db('bob'), 'users/alice/recipes/x2'), { name: 'not yours' }));
+    await assertFails(updateDoc(doc(db('bob'), 'users/alice/recipes/x1'), { name: 'changed' }));
+    await assertFails(deleteDoc(doc(db('bob'), 'users/alice/recipes/x1')));
+    await assertFails(getDoc(doc(db('eve'), 'users/alice/recipes/x1')));
+    await assertFails(getDocs(collection(db('eve'), 'users/alice/recipes')));
+    await assertFails(getDoc(doc(db(null), 'users/alice/recipes/x1')));
+    await seed((a) => updateDoc(doc(a, 'users/alice'), { 'sharing.recipes': false }));
+    await assertFails(getDoc(doc(db('bob'), 'users/alice/recipes/x1')));
+    await assertFails(getDocs(collection(db('bob'), 'users/alice/recipes')));
+    await assertSucceeds(getDoc(doc(db('alice'), 'users/alice/recipes/x1')));
   });
   test('recipes can be shared as posts', async () => {
     await seedUsers();

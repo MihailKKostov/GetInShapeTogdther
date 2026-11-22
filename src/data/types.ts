@@ -17,6 +17,8 @@ export interface Sharing {
   calorieGoal: boolean;
   diary: boolean;
   activities: boolean;
+  /** The recipe book (Recipes tab). Missing on older profiles = shared. */
+  recipes: boolean;
 }
 
 export const DEFAULT_SHARING: Sharing = {
@@ -29,6 +31,7 @@ export const DEFAULT_SHARING: Sharing = {
   calorieGoal: false,
   diary: false,
   activities: true,
+  recipes: true,
 };
 
 /** Denormalized values copied to the public profile only when the matching toggle is on. */
@@ -351,7 +354,8 @@ export interface Recipe extends RecipeSnapshot {
   updatedAt?: Timestamp;
   lastCookedAt?: number | null;
   /** Set when saved from a friend's shared recipe. */
-  sharedFrom?: { uid: string; name: string; postId: string } | null;
+  /** Where a copied recipe came from: a feed post or a friend's recipe book. */
+  sharedFrom?: { uid: string; name: string; postId?: string; recipeId?: string } | null;
 }
 
 /** users/{uid}/groceryLists/{id} */

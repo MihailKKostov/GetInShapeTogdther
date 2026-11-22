@@ -180,6 +180,7 @@ button { font: inherit; color: inherit; }
   font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; user-select: none; white-space: nowrap;
   transition: background 120ms var(--ease), border-color 120ms var(--ease), transform 80ms var(--ease), opacity 120ms;
 }
+.btn svg { flex: none; } /* icons keep their size when a button is squeezed */
 .btn:hover { background: var(--hover); text-decoration: none; }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
