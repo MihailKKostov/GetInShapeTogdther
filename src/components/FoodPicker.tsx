@@ -12,8 +12,9 @@ import { NUTRIENT_LABELS, scaleNutrients } from '../lib/nutrition';
 import { fmtNum } from '../lib/units';
 import { ActionButton, Empty, ErrorLine, Icon, Modal, NumInput, Seg, Skeleton, Spinner, useToast } from './ui';
 import { NutrientSummary } from './NutrientSummary';
+import { PhotoTab } from './PhotoTab';
 
-type Tab = 'search' | 'recent' | 'mine' | 'recipe' | 'quick' | 'scan';
+type Tab = 'search' | 'photo' | 'recent' | 'mine' | 'recipe' | 'quick' | 'scan';
 
 export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('search');
@@ -26,7 +27,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
       ) : (
         <>
           <div className="tabs">
-            {(['search', 'recent', 'mine', 'recipe', 'quick', ...(hasScanner ? ['scan'] : [])] as Tab[]).map((t) => (
+            {(['search', 'photo', 'recent', 'mine', 'recipe', 'quick', ...(hasScanner ? ['scan'] : [])] as Tab[]).map((t) => (
               <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
                 {t === 'mine' ? 'My foods' : t === 'quick' ? 'Quick add' : t[0].toUpperCase() + t.slice(1)}
               </button>
@@ -35,6 +36,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
           {tab === 'search' && <SearchTab onPick={setPicked} />}
           {tab === 'recent' && <RecentTab onPick={setPicked} />}
           {tab === 'mine' && <MyFoodsTab onPick={setPicked} />}
+          {tab === 'photo' && <PhotoTab date={date} meal={meal} onDone={onClose} />}
           {tab === 'recipe' && <RecipeTab onPick={setPicked} />}
           {tab === 'quick' && <QuickAdd date={date} meal={meal} onDone={onClose} />}
           {tab === 'scan' && <ScanTab onPick={setPicked} />}

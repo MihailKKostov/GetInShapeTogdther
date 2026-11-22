@@ -124,7 +124,7 @@ export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snacks'];
 /** A food definition: nutrients per `per` grams (or per one serving when `per` is 0). */
 export interface Food {
   id: string;
-  source: 'generic' | 'off' | 'custom' | 'quick' | 'recipe';
+  source: 'generic' | 'off' | 'custom' | 'quick' | 'recipe' | 'photo';
   name: string;
   brand?: string;
   /** nutrients for 100 g */

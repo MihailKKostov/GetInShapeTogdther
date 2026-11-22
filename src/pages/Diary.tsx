@@ -168,7 +168,7 @@ function MealGroup({ meal, date, entries, onAdd, onEdit, locked }: {
             <button key={e.id} className="li" disabled={locked} onClick={() => !locked && onEdit(e)} style={{ padding: '8px 16px', cursor: locked ? 'default' : 'pointer' }}>
               <div className="main">
                 <div className="name">{e.name}</div>
-                <div className="sub">{e.source === 'quick' ? 'Quick add' : e.servings != null ? `${fmtNum(e.servings, e.servings % 1 ? 1 : 0)} serving${e.servings === 1 ? '' : 's'}` : `${fmtNum(e.grams)} g`}{e.brand ? ` · ${e.brand}` : ''}</div>
+                <div className="sub">{e.source === 'quick' ? 'Quick add' : e.source === 'photo' ? `~${fmtNum(e.grams)} g · AI estimate` : e.servings != null ? `${fmtNum(e.servings, e.servings % 1 ? 1 : 0)} serving${e.servings === 1 ? '' : 's'}` : `${fmtNum(e.grams)} g`}{e.brand ? ` · ${e.brand}` : ''}</div>
               </div>
               <div className="end"><b>{fmtNum(e.n.kcal)}</b> <span className="small muted">kcal</span></div>
             </button>

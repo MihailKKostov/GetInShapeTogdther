@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAiSettings } from '../components/PhotoTab';
+import { AI_MODELS, aiSettings, testKey } from '../lib/foodPhoto';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { displayName, saveSettings, setSharing, updateProfile, uploadAvatar } from '../data/api';
@@ -20,6 +22,7 @@ export default function Settings() {
       <ProfileSection />
       <GoalsSection />
       <PrivacySection />
+      <AiSection />
       <AppearanceSection />
       <AccountSection />
     </div>
@@ -161,6 +164,68 @@ function PrivacySection() {
         <div className="li"><div className="main"><div className="name">BMI, birth year, sex, email</div><div className="sub">Never shared</div></div><span className="vis">🔒 Private</span></div>
       </div>
     </Panel>
+  );
+}
+
+function AiSection() {
+  const toast = useToast();
+  const { key, model } = useAiSettings();
+  const [draft, setDraft] = useState('');
+  const [mdl, setMdl] = useState(model);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (location.hash === '#ai') ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const save = useAction(async () => {
+    const k = draft.trim() || key;
+    if (!k) throw new Error('Paste your API key first');
+    if (!/^sk-/.test(k)) throw new Error('OpenAI keys start with "sk-"');
+    const problem = await testKey(k, mdl);
+    if (problem) throw new Error(problem);
+    aiSettings.setKey(k);
+    aiSettings.setModel(mdl);
+    setDraft('');
+    toast('OpenAI key verified and saved on this device');
+  });
+  return (
+    <section ref={ref} id="ai" style={{ scrollMarginTop: 64 }}>
+      <Panel title="AI photo recognition" right={key ? <span className="pill ok">✓ Set up</span> : <span className="pill">Off</span>}>
+        <div className="col gap2">
+          <p className="small muted" style={{ margin: 0 }}>
+            Estimate calories from a photo of your meal (Diary → Add food → Photo). It uses your own OpenAI API key:
+            create one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer noopener">platform.openai.com/api-keys</a>.
+            Each photo costs a small amount, billed to your OpenAI account.
+          </p>
+          <label className="f">
+            <span>OpenAI API key</span>
+            <input
+              type="password" autoComplete="off" spellCheck={false}
+              placeholder={key ? `Saved (…${key.slice(-4)}). Paste to replace` : 'sk-…'}
+              value={draft} onChange={(e) => { setDraft(e.target.value); if (save.state === 'error') save.reset(); }}
+            />
+          </label>
+          <label className="f">
+            <span>Model</span>
+            <select value={mdl} onChange={(e) => { setMdl(e.target.value); if (save.state === 'error') save.reset(); }}>
+              {AI_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              {!AI_MODELS.some((m) => m.id === mdl) && <option value={mdl}>{mdl}</option>}
+            </select>
+          </label>
+          <ErrorLine>{save.error}</ErrorLine>
+          <div className="row wrap">
+            <ActionButton variant="primary" state={save.state} pendingLabel="Checking key…" doneLabel="Saved" onClick={() => save.run()}
+              disabled={!draft.trim() && (!key || mdl === model)}>
+              {key && !draft.trim() ? 'Save model' : 'Verify & save'}
+            </ActionButton>
+            {key && <button className="btn danger" onClick={() => { aiSettings.setKey(''); toast('OpenAI key removed from this device'); }}>Remove key</button>}
+          </div>
+          <p className="small faint" style={{ margin: 0 }}>
+            🔒 Your key is stored only in this browser on this device. It's sent directly to OpenAI and never to WeFit's servers or your friends.
+            Add it again on each device you use.
+          </p>
+        </div>
+      </Panel>
+    </section>
   );
 }
 
