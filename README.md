@@ -1,4 +1,4 @@
-# GIST — Get In Shape Together
+# WeFit — Get fit together
 
 A web app for a group of friends getting in shape together: food log with calorie and macro goals, workout tracking with GPS, progress photos, and a friends-only feed where the only interaction is emoji reactions. There are no chats and no comments.
 
@@ -84,8 +84,8 @@ Add these **repository secrets** (Settings → Secrets and variables → Actions
 | Secret | Value |
 | --- | --- |
 | `VITE_FIREBASE_API_KEY` | from the web app config |
-| `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `gist-friends.firebaseapp.com` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | e.g. `gist-friends.firebasestorage.app` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `wefit-friends.firebaseapp.com` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | e.g. `wefit-friends.firebasestorage.app` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | from the web app config |
 | `VITE_FIREBASE_APP_ID` | from the web app config |
 

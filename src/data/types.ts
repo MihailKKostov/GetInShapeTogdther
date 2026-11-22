@@ -86,6 +86,8 @@ export interface PrivateSettings {
   activityLevel: ActivityLevel;
   goalType: GoalType;
   weeklyRateKg: number;
+  /** Optional date (YYYY-MM-DD) the user would like to reach their target weight by. */
+  targetDate?: string | null;
   startWeightKg: number;
   targetWeightKg: number;
   calorieGoal: number;

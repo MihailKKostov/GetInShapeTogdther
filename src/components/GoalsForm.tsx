@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { ActivityLevel, GoalType, PrivateSettings, Sex, Units } from '../data/types';
-import { ACTIVITY_FACTORS, bmr, macroGrams, suggestedCalories, tdee } from '../lib/nutrition';
+import {
+  ACTIVITY_FACTORS, RATE_OPTIONS, bmr, goalEta, macroGrams, planRate, suggestedCalories, tdee, type RatePlan,
+} from '../lib/nutrition';
+import { addDays, dateKey, daysBetween, parseKey } from '../lib/dates';
 import { fmtNum, kgTo, toKg, weightUnit } from '../lib/units';
 import { NumInput, Seg, Toggle } from './ui';
 
@@ -13,6 +16,7 @@ export const DEFAULT_SETTINGS: PrivateSettings = {
   activityLevel: 'light',
   goalType: 'lose',
   weeklyRateKg: 0.5,
+  targetDate: null,
   startWeightKg: 80,
   targetWeightKg: 74,
   calorieGoal: 2000,
@@ -37,6 +41,11 @@ const PRESETS: { l: string; p: PrivateSettings['macroPct'] }[] = [
 export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onChange: (s: PrivateSettings) => void; weightKg: number }) {
   const set = <K extends keyof PrivateSettings>(k: K, v: PrivateSettings[K]) => {
     const next = { ...s, [k]: v };
+    // With a target date, re-pick the closest rate whenever the date or target changes.
+    if ((k === 'targetDate' || k === 'targetWeightKg' || k === 'goalType') && next.targetDate && next.goalType !== 'maintain') {
+      const plan = planRate(weightKg, next.targetWeightKg, next.targetDate, dateKey());
+      if (plan) next.weeklyRateKg = plan.rate;
+    }
     if (next.calorieGoalAuto) next.calorieGoal = suggestedCalories(next, weightKg);
     onChange(next);
   };
@@ -46,6 +55,7 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
   const grams = macroGrams(s.calorieGoal, s.macroPct);
   const macroSum = s.macroPct.protein + s.macroPct.carbs + s.macroPct.fat;
   const rnd = (v: number) => Math.round(v * 10) / 10;
+  const plan = s.targetDate && s.goalType !== 'maintain' ? planRate(weightKg, s.targetWeightKg, s.targetDate, dateKey()) : null;
 
   return (
     <div className="col gap2">
@@ -68,18 +78,26 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
           {(Object.keys(ACTIVITY_FACTORS) as ActivityLevel[]).map((k) => <option key={k} value={k}>{ACTIVITY_FACTORS[k].label}</option>)}
         </select>
       </label>
+      <div className="col" style={{ gap: 5 }}>
+        <span className="flabel">Goal</span>
+        <Seg<GoalType> block value={s.goalType} onChange={(v) => set('goalType', v)} options={[{ v: 'lose', l: 'Lose weight' }, { v: 'maintain', l: 'Maintain' }, { v: 'gain', l: 'Gain weight' }]} />
+      </div>
       <div className="fgrid">
-        <div className="f"><span className="flabel">Goal</span>
-          <Seg<GoalType> value={s.goalType} onChange={(v) => set('goalType', v)} options={[{ v: 'lose', l: 'Lose' }, { v: 'maintain', l: 'Maintain' }, { v: 'gain', l: 'Gain' }]} />
-        </div>
+        {s.goalType !== 'maintain' && (
+          <label className="f"><span>Target date (optional)</span>
+            <input type="date" value={s.targetDate ?? ''} min={addDays(dateKey(), 7)} onChange={(e) => set('targetDate', e.target.value || null)} />
+            {s.targetDate && <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-start', paddingLeft: 0 }} onClick={() => set('targetDate', null)}>Clear date</button>}
+          </label>
+        )}
         {s.goalType !== 'maintain' && (
           <label className="f"><span>Rate per week</span>
             <select value={s.weeklyRateKg} onChange={(e) => set('weeklyRateKg', Number(e.target.value))}>
-              {[0.25, 0.5, 0.75, 1].map((r) => <option key={r} value={r}>{fmtNum(kgTo(u, r), 2)} {wu} / week</option>)}
+              {RATE_OPTIONS.map((r) => <option key={r} value={r}>{fmtNum(kgTo(u, r), 2)} {wu}/week{plan?.rate === r ? ' ✓' : ''}</option>)}
             </select>
           </label>
         )}
       </div>
+      {s.goalType !== 'maintain' && <RatePlanNote s={s} weightKg={weightKg} plan={plan} />}
 
       <div className="stats c3">
         <div className="stat"><div className="k">Resting (BMR)</div><div className="v">{fmtNum(bmr(s, weightKg))}<small> kcal</small></div></div>
@@ -127,6 +145,58 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
           <Toggle on={s.addExerciseCalories} onChange={(v) => onChange({ ...s, addExerciseCalories: v })} label="Add exercise calories to my daily target" />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Explains the suggested rate and when the target will be reached at the chosen rate. */
+function RatePlanNote({ s, weightKg, plan }: { s: PrivateSettings; weightKg: number; plan: RatePlan | null }) {
+  const u = s.units;
+  const wu = weightUnit(u);
+  const today = dateKey();
+  const diff = s.targetWeightKg - weightKg;
+  const w = (kg: number) => `${fmtNum(kgTo(u, kg), 1)} ${wu}`;
+  const r = (kg: number) => `${fmtNum(kgTo(u, kg), 2)} ${wu}/week`;
+  const dateLabel = (k: string) => parseKey(k).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  if (Math.abs(diff) < 0.1) {
+    return <div className="small muted">You're already at your target weight.</div>;
+  }
+  const wrongWay = (s.goalType === 'lose' && diff > 0) || (s.goalType === 'gain' && diff < 0);
+  if (wrongWay) {
+    return (
+      <div className="small warn">
+        Your target ({w(s.targetWeightKg)}) is {diff > 0 ? 'above' : 'below'} your current weight ({w(weightKg)}).
+        Switch the goal to <b>{diff > 0 ? 'Gain' : 'Lose'}</b> or adjust the target.
+      </div>
+    );
+  }
+
+  const eta = goalEta(weightKg, s.targetWeightKg, s.weeklyRateKg, today);
+  const weeks = eta ? Math.round(daysBetween(today, eta) / 7) : 0;
+  const offset = eta && s.targetDate ? Math.round(daysBetween(s.targetDate, eta) / 7) : 0;
+
+  return (
+    <div className="summary" style={{ gap: 6 }}>
+      {plan && (
+        <div className="small">
+          To reach {w(s.targetWeightKg)} by <b>{dateLabel(s.targetDate!)}</b> you'd need about <b>{r(plan.requiredKgPerWeek)}</b>.{' '}
+          {plan.tooFast
+            ? <span className="warn">That's faster than the recommended maximum, so we suggest {r(plan.rate)}.</span>
+            : <>Closest option: <b>{r(plan.rate)}</b>.</>}
+        </div>
+      )}
+      {eta && (
+        <div className="small">
+          At {r(s.weeklyRateKg)} you'll reach your target around <b>{dateLabel(eta)}</b> ({weeks} week{weeks === 1 ? '' : 's'})
+          {s.targetDate && (
+            offset === 0 ? <span className="ok"> — right on time.</span>
+              : offset > 0 ? <span className="muted"> — {offset} week{offset === 1 ? '' : 's'} after your target date.</span>
+                : <span className="ok"> — {-offset} week{offset === -1 ? '' : 's'} early.</span>
+          )}
+          {!s.targetDate && '.'}
+        </div>
+      )}
     </div>
   );
 }

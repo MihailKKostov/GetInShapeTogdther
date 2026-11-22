@@ -1,3 +1,4 @@
+import { addDays, daysBetween } from './dates';
 import type {
   ActivityLevel, ActivityType, DiaryDay, Nutrients, PrivateSettings,
 } from '../data/types';
@@ -29,6 +30,36 @@ export function suggestedCalories(s: PrivateSettings, weightKg: number): number 
   const floor = s.sex === 'male' ? 1500 : 1200;
   goal = Math.max(floor, goal);
   return Math.round(goal / 10) * 10;
+}
+
+/** Weekly rates offered for losing or gaining weight, in kg per week. */
+export const RATE_OPTIONS = [0.25, 0.5, 0.75, 1];
+
+export interface RatePlan {
+  /** kg/week needed to hit the target exactly on the date */
+  requiredKgPerWeek: number;
+  /** closest offered option (ties go to the slower, gentler rate) */
+  rate: number;
+  /** required rate is faster than the fastest option */
+  tooFast: boolean;
+}
+
+/** Suggest one of RATE_OPTIONS for reaching `targetKg` by `targetDate`. */
+export function planRate(currentKg: number, targetKg: number, targetDate: string, today: string): RatePlan | null {
+  const days = daysBetween(today, targetDate);
+  const diff = Math.abs(targetKg - currentKg);
+  if (days <= 0 || diff < 0.1) return null;
+  const required = diff / (days / 7);
+  let rate = RATE_OPTIONS[0];
+  for (const r of RATE_OPTIONS) if (Math.abs(r - required) < Math.abs(rate - required) - 1e-9) rate = r;
+  return { requiredKgPerWeek: required, rate, tooFast: required > RATE_OPTIONS[RATE_OPTIONS.length - 1] };
+}
+
+/** Estimated date (YYYY-MM-DD) of reaching the target at a steady weekly rate. */
+export function goalEta(currentKg: number, targetKg: number, rateKgPerWeek: number, today: string): string | null {
+  const diff = Math.abs(targetKg - currentKg);
+  if (diff < 0.1 || rateKgPerWeek <= 0) return null;
+  return addDays(today, Math.ceil((diff / rateKgPerWeek) * 7));
 }
 
 export function macroGrams(kcal: number, pct: PrivateSettings['macroPct']) {

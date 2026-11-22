@@ -26,7 +26,7 @@ export default function Friends() {
     setFresh(id);
     const url = inviteUrl(id);
     if (navigator.share) {
-      await navigator.share({ title: 'Get in shape together', text: `${displayName(profile)} invited you to train together`, url }).catch(() => undefined);
+      await navigator.share({ title: 'Join me on WeFit', text: `${displayName(profile)} invited you to get fit together on WeFit`, url }).catch(() => undefined);
     } else {
       await navigator.clipboard?.writeText(url).catch(() => undefined);
       toast('Invite link copied to clipboard');

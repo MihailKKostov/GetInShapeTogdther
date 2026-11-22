@@ -60,8 +60,8 @@ export default function Login() {
     <div className="login">
       <div className="box col gap2">
         <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 6, marginBottom: 8 }}>
-          <span className="logo"><img src="/favicon.svg" alt="" />GIST</span>
-          <p className="muted" style={{ margin: 0 }}>Get in shape together — track food, workouts and progress with friends.</p>
+          <span className="logo"><img src="/favicon.svg" alt="" />WeFit</span>
+          <p className="muted" style={{ margin: 0 }}>Get fit together — track food, workouts and progress with friends.</p>
         </div>
         {invited && <div className="pill accent" style={{ justifyContent: 'center', padding: '8px 12px' }}>You've been invited! Sign in or create an account to accept.</div>}
         {!isConfigured && <div className="err">Firebase is not configured. Set the VITE_FIREBASE_* variables (see README).</div>}
