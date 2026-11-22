@@ -58,6 +58,20 @@ service cloud.firestore {
         allow read, write: if isMe(uid);
       }
 
+      // Recipe-link imports: the app creates a pending request, the importRecipe Cloud Function
+      // (admin access, bypasses rules) fills in the result. Users can't forge a result.
+      match /recipeImports/{importId} {
+        allow read, delete: if isMe(uid);
+        allow create: if isMe(uid)
+          && request.resource.data.keys().hasOnly(['url', 'status', 'createdAt'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.url is string
+          && request.resource.data.url.size() > 8
+          && request.resource.data.url.size() < 2000
+          && request.resource.data.url.matches('^https?://.*');
+        allow update: if false;
+      }
+
       match /weights/{date} {
         allow read: if isMe(uid) || (isFriendOf(uid) && shares(uid, 'weightHistory'));
         allow write: if isMe(uid);

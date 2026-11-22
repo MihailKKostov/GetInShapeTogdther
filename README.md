@@ -8,6 +8,7 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 
 | Area | What's there |
 | --- | --- |
+| **Recipe import** | Paste a recipe link in *Add food → Recipe*. A Cloud Function reads the page's schema.org recipe data (name, servings, ingredients, nutrition per serving), you review it, and it's saved to *My foods* to log by the serving. Sites that block automated reading or don't list nutrition fall back to entering the values by hand. |
 | **Food log** (`/log`) | Search reference whole foods plus [Open Food Facts](https://world.openfoodfacts.org) (packaged foods, no API key needed). Barcode scan where the browser supports `BarcodeDetector`. Custom foods, recent foods, quick add, copy a meal from yesterday. Per-day energy budget (goal + exercise), macros, fiber, sodium, water, weigh-in. |
 | **Completing a day** | "Mark day as complete" locks the day and checks it against your "on target" band (default: up to 15 % under / 5 % over budget). That updates your streak and can post a summary to the feed (kcal, macros, streak — never the food list). |
 | **Activities** (`/move`) | Manual log (run, ride, walk, hike, swim, row, strength with sets×reps×load, HIIT, yoga, sport). In-browser GPS recording with a wake lock and crash recovery. GPX import. Pace, speed and elevation. Calorie estimate from MET values. Routes are drawn as schematic traces, not on map tiles. |
@@ -77,6 +78,27 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
 
    Only workflows from this exact repository can use the service account. Then put the printed provider path, service account email and your project ID in the `env:` block at the top of `.github/workflows/deploy.yml`. They aren't secrets.
 
+7. **Cloud Functions (needed for recipe import):** new Google Cloud organisations no longer grant default roles automatically, so run this once in [Cloud Shell](https://shell.cloud.google.com):
+
+   ```bash
+   PROJECT_ID=your-project-id
+   PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+   SA="github-deploy@$PROJECT_ID.iam.gserviceaccount.com"
+   COMPUTE_SA="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+   gcloud services enable cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
+     run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com --project "$PROJECT_ID"
+   for ROLE in roles/cloudfunctions.admin roles/run.admin roles/artifactregistry.admin roles/eventarc.admin roles/iam.serviceAccountUser roles/datastore.viewer; do
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" --role="$ROLE" --condition=None >/dev/null && echo "deploy account: $ROLE"
+   done
+   for ROLE in roles/cloudbuild.builds.builder roles/eventarc.eventReceiver roles/run.invoker roles/datastore.user roles/logging.logWriter; do
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$COMPUTE_SA" --role="$ROLE" --condition=None >/dev/null && echo "runtime account: $ROLE"
+   done
+   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
+     --role=roles/iam.serviceAccountTokenCreator --condition=None >/dev/null && echo "pubsub agent: token creator"
+   ```
+
+   The function is a Firestore trigger rather than a public HTTP endpoint, so it also works under organisation policies that forbid public access.
+
 ## GitHub setup
 
 Add these **repository secrets** (Settings → Secrets and variables → Actions):
@@ -92,7 +114,7 @@ Add these **repository secrets** (Settings → Secrets and variables → Actions
 The workflow is `.github/workflows/deploy.yml`:
 
 - **Every push and PR:** typecheck, production build, and the security rules test suite against the Firebase emulators.
-- **Push to `main`:** deploys Hosting, Firestore rules and indexes, and Storage rules.
+- **Push to `main`:** deploys Hosting, Firestore rules and indexes, and Storage rules, then Cloud Functions in a separate job, in the same region as your Firestore database.
 - **PRs from this repo:** deploys a preview channel that expires after 7 days. Its URL appears in the workflow run summary. Google sign-in on preview URLs only works if you add that domain to Auth's authorized domains; email sign-in works everywhere.
 
 Then share `https://<project-id>.web.app` with your friends. Each person signs in, completes the 2-minute setup, and sends invite links from the **Friends** tab.

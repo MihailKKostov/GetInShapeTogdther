@@ -124,13 +124,33 @@ export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snacks'];
 /** A food definition: nutrients per `per` grams (or per one serving when `per` is 0). */
 export interface Food {
   id: string;
-  source: 'generic' | 'off' | 'custom' | 'quick';
+  source: 'generic' | 'off' | 'custom' | 'quick' | 'recipe';
   name: string;
   brand?: string;
   /** nutrients for 100 g */
   per100: Nutrients;
   servingG?: number;
   servingLabel?: string;
+  /** Only known per serving (e.g. imported recipes): per100 then holds one serving and servingG is 100. */
+  perServing?: boolean;
+  recipeUrl?: string;
+}
+
+/** users/{uid}/recipeImports/{id} — written by the app, completed by the importRecipe function. */
+export interface RecipeImport {
+  id: string;
+  url: string;
+  status: 'pending' | 'done' | 'error';
+  error?: string;
+  recipe?: {
+    name: string;
+    servings: number | null;
+    yieldLabel: string | null;
+    image: string | null;
+    url: string;
+    ingredients: string[];
+    nutrition: (Partial<Nutrients> & { servingSize?: string }) | null;
+  };
 }
 
 export interface FoodEntry {
@@ -141,6 +161,8 @@ export interface FoodEntry {
   name: string;
   brand?: string;
   grams: number;
+  /** set for per-serving foods (recipes): number of servings eaten */
+  servings?: number;
   /** nutrients for the logged amount */
   n: Nutrients;
   addedAt: number;

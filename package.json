@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-gist \"node --test tests/rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-gist \"node --test tests/rules.test.mjs\"",
+    "test:unit": "node --test tests/recipe.test.mjs"
   },
   "dependencies": {
     "firebase": "^13.4.0",

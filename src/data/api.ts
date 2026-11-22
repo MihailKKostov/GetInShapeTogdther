@@ -36,6 +36,7 @@ export const diaryCol = (uid: string) => collection(db, 'users', uid, 'diary');
 export const weightsCol = (uid: string) => collection(db, 'users', uid, 'weights');
 export const activitiesCol = (uid: string) => collection(db, 'users', uid, 'activities');
 export const foodsCol = (uid: string) => collection(db, 'users', uid, 'foods');
+export const recipeImportsCol = (uid: string) => collection(db, 'users', uid, 'recipeImports');
 export const friendsCol = (uid: string) => collection(db, 'users', uid, 'friends');
 export const postsCol = () => collection(db, 'posts');
 export const reactionsCol = (postId: string) => collection(db, 'posts', postId, 'reactions');
@@ -194,6 +195,13 @@ export async function setWater(uid: string, date: string, ml: number) {
 
 export async function saveCustomFood(uid: string, food: Food) {
   await setDoc(doc(foodsCol(uid), food.id), food);
+}
+
+/** Ask the importRecipe Cloud Function to read a recipe page; returns the request doc id to listen to. */
+export function requestRecipeImport(uid: string, url: string): string {
+  const ref = doc(recipeImportsCol(uid));
+  background(setDoc(ref, { url, status: 'pending', createdAt: serverTimestamp() }), 'recipe import');
+  return ref.id;
 }
 
 export async function deleteCustomFood(uid: string, id: string) {
