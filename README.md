@@ -16,7 +16,7 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 | **Privacy** | Each private field has a 👥 Friends / 🔒 Private badge on your own profile; tap it to switch. All toggles are also in Settings. |
 | **Friends** | Invite by link (expires after 14 days, can be revoked). Accepting the link makes you friends both ways. Either person can remove the friendship. |
 | **Feed** | Posts from you and your friends only. Filters: all / friends / me / progress. |
-| **Reactions** | Any number of emojis per post, toggled on and off. Custom emojis work like Slack's: upload an image or make a text sticker. |
+| **Reactions & emoji** | Any number of emojis per post, toggled on and off. Custom emojis work like Slack's: upload an image or make a text sticker. Emojis can be typed Slack-style anywhere you write text (posts, status, notes): `:fi` opens suggestions, and a full `:fire:` turns into 🔥. Custom emojis are written as `:name:` and shown as images. |
 | **Profile basics** | Optional nickname (defaults to your name), Google photo / uploaded photo / initials avatar, and a status of up to 80 characters. |
 
 ### What friends can see

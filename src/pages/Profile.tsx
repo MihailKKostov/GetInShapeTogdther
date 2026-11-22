@@ -9,6 +9,7 @@ import {
   type UserProfile, type WeightEntry,
 } from '../data/types';
 import { BarChart, LineChart } from '../components/Charts';
+import { EmojiField, EmojiText } from '../components/EmojiText';
 import {
   ActionButton, Avatar, Empty, Icon, Lightbox, Panel, Seg, Skeleton, VisBadge, useToast,
 } from '../components/ui';
@@ -175,7 +176,7 @@ function Header({ p, self }: { p: UserProfile; self: boolean }) {
           {p.nickname && p.nickname !== p.displayName && <div className="small muted">{p.displayName}</div>}
           {editing ? (
             <div className="col" style={{ gap: 6 }}>
-              <input value={status} maxLength={80} autoFocus placeholder="e.g. Training for a 10k" onChange={(e) => setStatus(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save.run()} />
+              <EmojiField value={status} maxLength={80} autoFocus placeholder="e.g. Training for a 10k" onChange={setStatus} onEnter={() => save.run()} />
               <div className="row">
                 <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>Save</ActionButton>
                 <button className="btn sm ghost" onClick={() => { setEditing(false); setStatus(p.status); }}>Cancel</button>
@@ -184,7 +185,7 @@ function Header({ p, self }: { p: UserProfile; self: boolean }) {
             </div>
           ) : (
             <div className="row" style={{ gap: 6 }}>
-              <span className={p.status ? '' : 'faint'}>{p.status || (self ? 'Set a status' : '')}</span>
+              <span className={p.status ? '' : 'faint'}>{p.status ? <EmojiText text={p.status} /> : self ? 'Set a status' : ''}</span>
               {self && <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={() => setEditing(true)} aria-label="Edit status"><Icon name="edit" size={16} /></button>}
             </div>
           )}

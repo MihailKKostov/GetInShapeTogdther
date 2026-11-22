@@ -7,6 +7,7 @@ import { useSession } from '../hooks/useSession';
 import { fmtDay, fmtDuration, relTime } from '../lib/dates';
 import { ACTIVITY_TYPES } from '../lib/nutrition';
 import { fmtDist, fmtElev, fmtNum, fmtPace, fmtSpeed, fmtWeight } from '../lib/units';
+import { EmojiField, EmojiText } from './EmojiText';
 import { Reactions } from './Reactions';
 import { RouteTrace } from './RouteTrace';
 import { ActionButton, Avatar, Icon, Lightbox, Meter, useToast } from './ui';
@@ -71,14 +72,14 @@ export function PostCard({ post, author, names, isNew }: {
       <div className="post-b">
         {editing ? (
           <div className="col">
-            <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} autoFocus />
+            <EmojiField multiline value={text} onChange={setText} maxLength={1000} autoFocus />
             <div className="row">
               <ActionButton size="sm" variant="primary" state={save.state} onClick={() => save.run()}>Save</ActionButton>
               <button className="btn sm ghost" onClick={() => { setEditing(false); setText(post.text); }}>Cancel</button>
             </div>
           </div>
         ) : post.text ? (
-          <div className="post-text">{post.text}</div>
+          <div className="post-text"><EmojiText text={post.text} /></div>
         ) : null}
         {post.kind === 'day' && post.day && <DayBlock d={post.day} />}
         {post.kind === 'activity' && post.activity && <ActivityBlock a={post.activity} />}

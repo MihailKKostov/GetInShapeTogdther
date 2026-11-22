@@ -3,6 +3,7 @@ import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { displayName, saveSettings, setSharing, updateProfile, uploadAvatar } from '../data/api';
 import { DEFAULT_SHARING, type PrivateSettings, type Sharing } from '../data/types';
+import { EmojiField } from '../components/EmojiText';
 import { GoalsForm } from '../components/GoalsForm';
 import { useLatestWeightKg } from '../components/ActivityForm';
 import {
@@ -78,7 +79,7 @@ function ProfileSection() {
             <input value={nick} maxLength={30} placeholder={profile.displayName} onChange={(e) => setNick(e.target.value)} />
           </label>
           <label className="f"><span>Status ({status.length}/80)</span>
-            <input value={status} maxLength={80} placeholder="e.g. Training for a 10k" onChange={(e) => setStatus(e.target.value)} />
+            <EmojiField value={status} maxLength={80} placeholder="e.g. Training for a 10k :muscle:" onChange={setStatus} />
           </label>
         </div>
         <div className="row between">

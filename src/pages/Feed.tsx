@@ -8,6 +8,7 @@ import {
 } from '../components/ui';
 import { useAction } from '../hooks/useAction';
 import { useObjectUrls } from '../hooks/useObjectUrls';
+import { EmojiField } from '../components/EmojiText';
 import { useMe } from '../hooks/useSession';
 import { usePosts, useProfiles } from '../hooks/useSocial';
 
@@ -143,12 +144,13 @@ function Composer() {
         <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Cancel"><Icon name="close" size={20} /></button>
       </div>
       <div className="panel-b col">
-        <textarea
+        <EmojiField
+          multiline
           autoFocus
           placeholder={progress ? 'How are you feeling about your progress?' : "What's new?"}
           value={text}
           maxLength={1000}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
         />
         <input
           ref={fileRef}

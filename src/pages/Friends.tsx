@@ -8,6 +8,7 @@ import { useAction } from '../hooks/useAction';
 import { useQuery } from '../hooks/useFirestore';
 import { useMe } from '../hooks/useSession';
 import { useProfiles } from '../hooks/useSocial';
+import { EmojiText } from '../components/EmojiText';
 import { fmtShort, relTime } from '../lib/dates';
 
 export function inviteUrl(id: string) {
@@ -72,7 +73,7 @@ export default function Friends() {
                   <Avatar p={p} size={44} />
                   <div className="main">
                     <div className="name">{p ? displayName(p) : '…'}</div>
-                    <div className="sub">{p?.status || `Active ${relTime(p?.lastActiveAt?.toDate?.())}`}</div>
+                    <div className="sub">{p?.status ? <EmojiText text={p.status} /> : `Active ${relTime(p?.lastActiveAt?.toDate?.())}`}</div>
                   </div>
                   <div className="end">
                     <b>🔥 {p?.stats?.streak ?? 0}</b>

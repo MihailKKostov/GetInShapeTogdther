@@ -8,6 +8,7 @@ import {
 import { MEALS, type DiaryDay, type FoodEntry, type Meal, type Nutrients, type WeightEntry } from '../data/types';
 import { FoodPicker } from '../components/FoodPicker';
 import { NutrientSummary } from '../components/NutrientSummary';
+import { EmojiField } from '../components/EmojiText';
 import {
   ActionButton, ErrorLine, Icon, Meter, Modal, NumInput, Panel, Ring, Skeleton, Toggle, useToast,
 } from '../components/ui';
@@ -290,7 +291,7 @@ function CompletePanel({ date, day, totals, budget, onTarget }: { date: string; 
           A completed day counts toward your streak when calories land between {settings.bandLowerPct}% under and {settings.bandUpperPct}% over your target.
         </p>
         <Toggle on={share} onChange={setShare} label={<span>Share with friends <span className="small muted">(calories, macros and streak — not your foods)</span></span>} />
-        {share && <input placeholder="Add a note (optional)" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} />}
+        {share && <EmojiField placeholder="Add a note (optional)" value={note} maxLength={200} onChange={setNote} />}
         <ErrorLine>{close.error}</ErrorLine>
         <ActionButton variant="primary" block state={close.state} onClick={() => close.run()} pendingLabel="Completing…" doneLabel="Completed">
           Mark day as complete
