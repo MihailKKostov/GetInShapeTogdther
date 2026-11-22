@@ -1,3 +1,4 @@
+import { InstallPanel } from '../components/Install';
 import { useEffect, useRef, useState } from 'react';
 import { useAiSettings } from '../components/PhotoTab';
 import { AI_MODELS, aiSettings, testKey } from '../lib/foodPhoto';
@@ -24,6 +25,7 @@ export default function Settings() {
       <PrivacySection />
       <AiSection />
       <AppearanceSection />
+      <InstallPanel />
       <AccountSection />
     </div>
   );
