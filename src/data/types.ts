@@ -101,6 +101,8 @@ export interface PrivateSettings {
   bandLowerPct: number;
   bandUpperPct: number;
   setupComplete: boolean;
+  /** Log meals from the meal plan to the diary automatically once their meal time has passed. */
+  autoLogPlannedMeals?: boolean;
 }
 
 export interface Nutrients {
@@ -223,7 +225,7 @@ export interface PostPhoto {
   h: number;
 }
 
-export type PostKind = 'status' | 'photo' | 'activity' | 'day';
+export type PostKind = 'status' | 'photo' | 'activity' | 'day' | 'recipe';
 
 /** posts/{id} */
 export interface Post {
@@ -248,6 +250,8 @@ export interface Post {
     route: number[];
     exercises: StrengthSet[];
   };
+  /** Snapshot of a shared recipe (kind 'recipe'). */
+  recipe?: RecipeSnapshot;
   day?: {
     date: string;
     kcal: number;
@@ -292,3 +296,98 @@ export interface FriendLink {
   inviteId: string;
   since?: Timestamp;
 }
+
+// ───────────────────────── recipes (ported from RecipeMan)
+
+export interface RecipePhoto {
+  url: string;
+  /** Storage path when the photo was uploaded by the owner (deleted with the recipe). */
+  path?: string;
+}
+
+/** The parts of a recipe that are copied when it's shared or saved by a friend. */
+export interface RecipeSnapshot {
+  name: string;
+  description: string;
+  /** One ingredient per line. Lines ending with ':' or starting with '#' are section headers. */
+  ingredients: string;
+  /** One step per line. */
+  directions: string;
+  notes: string;
+  /** Free-text nutrition as published with the recipe ("Calories: 350\nProtein: 20 g"). */
+  nutrition: string;
+  /** Structured nutrition for ONE serving, used to log the recipe to the diary. */
+  perServing: Nutrients | null;
+  perServingSource?: 'recipe' | 'manual' | 'ai' | null;
+  servings: string;
+  prepTime: string;
+  cookTime: string;
+  totalTime: string;
+  difficulty: string;
+  source: string;
+  sourceUrl: string;
+  /** Main photo (uploaded or remote). */
+  imageUrl: string;
+  photos: RecipePhoto[];
+  categories: string[];
+}
+
+/** users/{uid}/recipes/{id} */
+export interface Recipe extends RecipeSnapshot {
+  id: string;
+  imagePath?: string;
+  rating: number;
+  favorite: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  lastCookedAt?: number | null;
+  /** Set when saved from a friend's shared recipe. */
+  sharedFrom?: { uid: string; name: string; postId: string } | null;
+}
+
+/** users/{uid}/groceryLists/{id} */
+export interface GroceryList { id: string; name: string; createdAt?: Timestamp }
+
+/** users/{uid}/groceryItems/{id} */
+export interface GroceryItem {
+  id: string;
+  listId: string;
+  /** Full display text, e.g. "2 cups flour". */
+  name: string;
+  aisle: string;
+  recipeName: string;
+  checked: boolean;
+  createdAt: number;
+}
+
+/** users/{uid}/mealPlan/{id} */
+export interface PlannedMeal {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  meal: Meal;
+  recipeId: string | null;
+  /** Free-text note, or the recipe's name (cached). */
+  name: string;
+  /** Servings eaten (for logging to the diary). */
+  servings: number;
+  /** Set once the meal has been logged to the diary. */
+  loggedEntryId?: string | null;
+}
+
+/** users/{uid}/pantry/{id} */
+export interface PantryItem {
+  id: string;
+  name: string;
+  quantity: string;
+  aisle: string;
+  /** YYYY-MM-DD */
+  purchaseDate: string | null;
+  expirationDate: string | null;
+  inStock: boolean;
+}
+
+export interface MenuItem { day: number; meal: Meal; recipeId: string | null; name: string }
+
+/** users/{uid}/menus/{id} */
+export interface RecipeMenu { id: string; name: string; notes: string; days: number; items: MenuItem[] }
