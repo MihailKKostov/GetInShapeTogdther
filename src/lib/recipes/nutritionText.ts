@@ -2,16 +2,23 @@
 // "Calories: 350\nProtein: 20 g" or Paprika's "Calories 350 kcal, Fat 12g …".
 import type { Nutrients } from '../../data/types';
 
-const FIELDS: [keyof Nutrients, RegExp][] = [
-  ['kcal', /\b(?:calories|energy|kcal)\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(kcal|cal|kj)?/i],
-  ['protein', /\bprotein\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['carbs', /\b(?:total\s+)?carb(?:ohydrate)?s?\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['satFat', /\bsat(?:urated)?\.?\s*fat\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['fat', /\b(?:total\s+)?fat\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['fiber', /\bfib(?:er|re)\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['sugar', /\bsugars?\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
-  ['sodiumMg', /\bsodium\b[^\d\n]{0,12}(\d+(?:[.,]\d+)?)\s*(mg|g)?/i],
+const NUM = '(\\d+(?:[.,]\\d+)?)';
+const LABELS_RE: [keyof Nutrients, string][] = [
+  ['kcal', '(?:calories|energy|kcal)'],
+  ['protein', 'protein'],
+  ['carbs', '(?:total\\s+)?carb(?:ohydrate)?s?'],
+  ['satFat', 'sat(?:urated)?\\.?\\s*fat'],
+  ['fat', '(?:total\\s+)?fat'],
+  ['fiber', 'fib(?:er|re)'],
+  ['sugar', 'sugars?'],
+  ['sodiumMg', 'sodium'],
 ];
+// "Protein: 20 g" (label first) or "20g Protein" / "537 Kcal" (number first).
+const FIELDS: [keyof Nutrients, RegExp, RegExp][] = LABELS_RE.map(([k, label]) => [
+  k,
+  new RegExp(`\\b${label}\\b[^\\d\\n]{0,12}${NUM}\\s*(kcal|cal|kj|mg|g)?`, 'i'),
+  new RegExp(`${NUM}\\s*(kcal|cal|kj|mg|g)?\\s*(?:of\\s+)?\\b${label}\\b`, 'i'),
+]);
 
 /** Returns whatever nutrients could be read, or null when there are no calories. */
 export function parseNutritionText(text: string | null | undefined): Partial<Nutrients> | null {
@@ -19,11 +26,11 @@ export function parseNutritionText(text: string | null | undefined): Partial<Nut
   // "Saturated fat" must not be read as "fat": take total fat from lines that don't mention saturated/trans.
   const lines = text.split(/\r?\n|;|,(?=\s*[A-Za-z])/);
   const out: Partial<Nutrients> = {};
-  for (const [key, re] of FIELDS) {
+  for (const [key, labelFirst, numberFirst] of FIELDS) {
     for (const line of lines) {
       if (key === 'fat' && /sat|trans|unsat|mono|poly/i.test(line)) continue;
       if (key === 'sugar' && /added|alcohol/i.test(line) && out.sugar != null) continue;
-      const m = re.exec(line);
+      const m = labelFirst.exec(line) ?? numberFirst.exec(line);
       if (!m) continue;
       let v = Number(m[1].replace(',', '.'));
       const unit = (m[2] ?? '').toLowerCase();
