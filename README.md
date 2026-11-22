@@ -8,6 +8,7 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 
 | Area | What's there |
 | --- | --- |
+| **AI estimates** | *Add food → AI estimate*: take a photo, or describe what you ate in your own words ("2 eggs with butter and a flat white"), and OpenAI estimates each food, its portion and nutrition. You review and edit the items before adding them. Each person adds their own OpenAI API key in *Settings → AI food estimates*; it's stored only in that browser and sent straight to OpenAI, never to WeFit's servers. |
 | **Recipe import** | Paste a recipe link in *Add food → Recipe*. A Cloud Function reads the page's schema.org recipe data (name, servings, ingredients, nutrition per serving), you review it, and it's saved to *My foods* to log by the serving. Sites that block automated reading or don't list nutrition fall back to entering the values by hand. |
 | **Food log** (`/log`) | Search reference whole foods plus [Open Food Facts](https://world.openfoodfacts.org) (packaged foods, no API key needed). Barcode scan where the browser supports `BarcodeDetector`. Custom foods, recent foods, quick add, copy a meal from yesterday. Per-day energy budget (goal + exercise), macros, fiber, sodium, water, weigh-in. |
 | **Completing a day** | "Mark day as complete" locks the day and checks it against your "on target" band (default: up to 15 % under / 5 % over budget). That updates your streak and can post a summary to the feed (kcal, macros, streak — never the food list). |
@@ -78,23 +79,29 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
 
    Only workflows from this exact repository can use the service account. Then put the printed provider path, service account email and your project ID in the `env:` block at the top of `.github/workflows/deploy.yml`. They aren't secrets.
 
-7. **Cloud Functions (needed for recipe import):** new Google Cloud organisations no longer grant default roles automatically, so run this once in [Cloud Shell](https://shell.cloud.google.com):
+7. **Cloud Functions (needed for recipe import):** new Google Cloud organisations no longer create or grant default accounts automatically, so run this once in [Cloud Shell](https://shell.cloud.google.com) (bash, not Windows PowerShell):
 
    ```bash
    PROJECT_ID=your-project-id
    PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
    SA="github-deploy@$PROJECT_ID.iam.gserviceaccount.com"
    COMPUTE_SA="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
-   gcloud services enable cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
+
+   # services (Compute Engine creates the default runtime account; no cost by itself)
+   gcloud services enable compute.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
      run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com --project "$PROJECT_ID"
-   for ROLE in roles/cloudfunctions.admin roles/run.admin roles/artifactregistry.admin roles/eventarc.admin roles/iam.serviceAccountUser roles/datastore.viewer; do
+   for i in $(seq 1 30); do
+     gcloud iam service-accounts describe "$COMPUTE_SA" --project "$PROJECT_ID" >/dev/null 2>&1 && echo "runtime account exists" && break
+     echo "waiting for the runtime account…"; sleep 10
+   done
+
+   # permissions
+   for ROLE in roles/cloudfunctions.admin roles/run.admin roles/artifactregistry.admin roles/eventarc.admin roles/iam.serviceAccountUser roles/datastore.viewer roles/serviceusage.serviceUsageAdmin; do
      gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" --role="$ROLE" --condition=None >/dev/null && echo "deploy account: $ROLE"
    done
    for ROLE in roles/cloudbuild.builds.builder roles/eventarc.eventReceiver roles/run.invoker roles/datastore.user roles/logging.logWriter; do
      gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$COMPUTE_SA" --role="$ROLE" --condition=None >/dev/null && echo "runtime account: $ROLE"
    done
-   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
-     --role=roles/iam.serviceAccountTokenCreator --condition=None >/dev/null && echo "pubsub agent: token creator"
    ```
 
    The function is a Firestore trigger rather than a public HTTP endpoint, so it also works under organisation policies that forbid public access.
