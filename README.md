@@ -75,7 +75,7 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
    echo "GCP_SERVICE_ACCOUNT            = $SA"
    ```
 
-   Only workflows from this exact repository can use the service account.
+   Only workflows from this exact repository can use the service account. Then put the printed provider path, service account email and your project ID in the `env:` block at the top of `.github/workflows/deploy.yml`. They aren't secrets.
 
 ## GitHub setup
 
@@ -83,9 +83,6 @@ Add these **repository secrets** (Settings → Secrets and variables → Actions
 
 | Secret | Value |
 | --- | --- |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | printed by the Cloud Shell script (`projects/…/providers/github-repo`) |
-| `GCP_SERVICE_ACCOUNT` | printed by the Cloud Shell script (`github-deploy@….iam.gserviceaccount.com`) |
-| `FIREBASE_PROJECT_ID` | e.g. `gist-friends` |
 | `VITE_FIREBASE_API_KEY` | from the web app config |
 | `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `gist-friends.firebaseapp.com` |
 | `VITE_FIREBASE_STORAGE_BUCKET` | e.g. `gist-friends.firebasestorage.app` |
