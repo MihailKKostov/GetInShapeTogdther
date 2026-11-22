@@ -90,7 +90,6 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
    # services (Compute Engine creates the default runtime account; no cost by itself)
    gcloud services enable compute.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
      run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com --project "$PROJECT_ID"
-   gcloud beta services identity create --service=pubsub.googleapis.com --project "$PROJECT_ID"
    for i in $(seq 1 30); do
      gcloud iam service-accounts describe "$COMPUTE_SA" --project "$PROJECT_ID" >/dev/null 2>&1 && echo "runtime account exists" && break
      echo "waiting for the runtime account…"; sleep 10
@@ -103,8 +102,6 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
    for ROLE in roles/cloudbuild.builds.builder roles/eventarc.eventReceiver roles/run.invoker roles/datastore.user roles/logging.logWriter; do
      gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$COMPUTE_SA" --role="$ROLE" --condition=None >/dev/null && echo "runtime account: $ROLE"
    done
-   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
-     --role=roles/iam.serviceAccountTokenCreator --condition=None >/dev/null && echo "pubsub agent: token creator"
    ```
 
    The function is a Firestore trigger rather than a public HTTP endpoint, so it also works under organisation policies that forbid public access.
