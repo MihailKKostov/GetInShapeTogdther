@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { doc } from 'firebase/firestore';
 import {
   closeDay, copyMeal, diaryRef, logWeight, removeFoodEntry, reopenDay, replaceFoodEntry, setWater,
   weightsCol,
 } from '../data/api';
-import { MEALS, type DiaryDay, type FoodEntry, type Meal, type Nutrients, type WeightEntry } from '../data/types';
+import { MEALS, type DiaryDay, type FoodEntry, type Meal, type Nutrients, type PlannedMeal, type Recipe, type WeightEntry } from '../data/types';
+import { logPlannedMeal } from '../data/recipes';
+import { useMealPlan, useRecipes } from './recipes/data';
 import { FoodPicker } from '../components/FoodPicker';
 import { NutrientSummary } from '../components/NutrientSummary';
 import { EmojiField } from '../components/EmojiText';
@@ -36,6 +38,9 @@ export default function Diary() {
   const setDate = (d: string) => setParams(d === today ? {} : { d }, { replace: true });
   const day = useDoc<DiaryDay>(diaryRef(uid, date), `diary:${uid}:${date}`);
   const [adding, setAdding] = useState<Meal | null>(null);
+  const planned = useMealPlan(uid, date, date);
+  const recipeList = useRecipes(uid);
+  const recipeMap = useMemo(() => new Map(recipeList.data.map((r) => [r.id, r])), [recipeList.data]);
   const [editing, setEditing] = useState<FoodEntry | null>(null);
 
   const totals = dayTotals(day.data ?? undefined);
@@ -68,6 +73,8 @@ export default function Diary() {
               onAdd={() => setAdding(m)}
               onEdit={setEditing}
               locked={closed}
+              planned={planned.data.filter((p) => p.meal === m && p.recipeId && !p.loggedEntryId)}
+              recipes={recipeMap}
             />
           ))}
         </div>}
@@ -129,8 +136,9 @@ function EnergySummary({ totals, budget, exercise }: { totals: Nutrients; budget
   );
 }
 
-function MealGroup({ meal, date, entries, onAdd, onEdit, locked }: {
+function MealGroup({ meal, date, entries, onAdd, onEdit, locked, planned, recipes }: {
   meal: Meal; date: string; entries: FoodEntry[]; onAdd: () => void; onEdit: (e: FoodEntry) => void; locked: boolean;
+  planned: PlannedMeal[]; recipes: Map<string, Recipe>;
 }) {
   const { uid } = useMe();
   const toast = useToast();
@@ -152,6 +160,18 @@ function MealGroup({ meal, date, entries, onAdd, onEdit, locked }: {
           )}
         </span>
       </div>
+      {!locked && planned.map((p) => {
+        const r = recipes.get(p.recipeId!);
+        return (
+          <div key={p.id} className="row" style={{ padding: '2px 16px 6px', gap: 8 }}>
+            <span className="pill accent" style={{ flex: 'none' }}>📅 Planned</span>
+            <span className="grow trunc small">{r?.name ?? p.name}{p.servings !== 1 ? ` ×${p.servings}` : ''}{r?.perServing ? ` · ${fmtNum(r.perServing.kcal * (p.servings || 1))} kcal` : ''}</span>
+            {r?.perServing
+              ? <button className="btn sm soft" onClick={() => { logPlannedMeal(uid, p, r); toast(`${r.name} logged`); }}>Log</button>
+              : <Link className="btn sm" to={r ? `/recipes/${r.id}` : '/plan'}>Add nutrition</Link>}
+          </div>
+        );
+      })}
       {entries.length === 0 ? (
         <div className="row" style={{ padding: '0 16px 10px', gap: 6 }}>
           {!locked && <button className="btn ghost sm" style={{ paddingLeft: 0 }} onClick={onAdd}>Add food</button>}

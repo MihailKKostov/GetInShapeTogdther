@@ -152,6 +152,15 @@ export interface RecipeImport {
     url: string;
     ingredients: string[];
     nutrition: (Partial<Nutrients> & { servingSize?: string }) | null;
+    // Added with the RecipeMan port (absent from results of the first function version):
+    description?: string;
+    directions?: string[];
+    nutritionText?: string;
+    prepTime?: string;
+    cookTime?: string;
+    totalTime?: string;
+    source?: string;
+    categories?: string[];
   };
 }
 

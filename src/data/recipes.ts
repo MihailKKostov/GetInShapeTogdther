@@ -52,8 +52,8 @@ export function saveRecipe(uid: string, id: string | null, data: Partial<Recipe>
   if (id) background(updateDoc(ref, { ...clean, updatedAt: serverTimestamp() }), 'your recipe');
   else {
     background(setDoc(ref, {
-      ...emptyRecipe(), rating: 0, favorite: false, lastCookedAt: null, ...clean,
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      ...emptyRecipe(), rating: 0, favorite: false, lastCookedAt: null,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...clean,
     }), 'your recipe');
   }
   return ref.id;
@@ -117,11 +117,11 @@ function scale(n: Nutrients, k: number): Nutrients {
 }
 
 /** Log servings of a recipe to the food diary. Returns the diary entry id. */
-export function logRecipe(uid: string, r: Pick<Recipe, 'id' | 'name' | 'perServing'>, date: string, meal: Meal, servings: number): string {
+export function logRecipe(uid: string, r: Pick<Recipe, 'id' | 'name' | 'perServing'>, date: string, meal: Meal, servings: number, entryId = randomId(12)): string {
   if (!r.perServing) throw new Error('Add nutrition per serving to this recipe first');
   const food = recipeFood(r);
   const entry: FoodEntry = {
-    id: randomId(12), meal, foodId: food.id, source: 'recipe', name: r.name, brand: 'My recipe',
+    id: entryId, meal, foodId: food.id, source: 'recipe', name: r.name, brand: 'My recipe',
     grams: Math.round(servings * 100), servings, n: scale(r.perServing, servings), addedAt: Date.now(),
   };
   addFoodEntry(uid, date, entry, food);
@@ -164,10 +164,15 @@ export function deleteGroceryList(uid: string, id: string, items: GroceryItem[])
  * ("1 cup flour" + "2 cups flour" = "3 cups flour"). (RecipeMan: Repository.addToGroceryList)
  */
 export function addToGroceryList(uid: string, listId: string, lines: string[], recipeName: string, current: GroceryItem[]): number {
+  return addLinesToGroceryList(uid, listId, lines.map((line) => ({ line, recipeName })), current);
+}
+
+/** Same as addToGroceryList, for lines from several recipes at once (e.g. a week's meal plan). */
+export function addLinesToGroceryList(uid: string, listId: string, entries: { line: string; recipeName: string }[], current: GroceryItem[]): number {
   const existing = current.filter((i) => i.listId === listId && !i.checked).map((i) => ({ ...i }));
   const changed = new Map<string, GroceryItem>();
   let added = 0;
-  for (const raw of lines) {
+  for (const { line: raw, recipeName } of entries) {
     const line = raw.trim();
     if (!line || isHeader(line)) continue;
     const match = existing.find((it) => combineIngredients(it.name, line) != null);

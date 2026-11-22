@@ -7,6 +7,8 @@ import Login from './pages/Login';
 import Setup from './pages/Setup';
 import Feed from './pages/Feed';
 import Diary from './pages/Diary';
+import { TimersProvider } from './pages/recipes/timers';
+import { AutoLogger } from './pages/recipes/AutoLogger';
 
 const Activities = lazy(() => import('./pages/Activities'));
 const Record = lazy(() => import('./pages/Record'));
@@ -15,6 +17,14 @@ const Friends = lazy(() => import('./pages/Friends'));
 const Invite = lazy(() => import('./pages/Invite'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Emojis = lazy(() => import('./pages/Emojis'));
+const Library = lazy(() => import('./pages/recipes/Library'));
+const RecipeDetail = lazy(() => import('./pages/recipes/RecipeDetail'));
+const RecipeEditor = lazy(() => import('./pages/recipes/RecipeEditor'));
+const ImportRecipe = lazy(() => import('./pages/recipes/ImportRecipe'));
+const Plan = lazy(() => import('./pages/recipes/Plan'));
+const Grocery = lazy(() => import('./pages/recipes/Grocery'));
+const Pantry = lazy(() => import('./pages/recipes/Pantry'));
+const Menus = lazy(() => import('./pages/recipes/Menus'));
 
 /** Boot screen: a logo and a spinner while auth and profile load. */
 function Boot({ label }: { label: string }) {
@@ -32,6 +42,8 @@ const preload = [
   () => import('./pages/Activities'), () => import('./pages/Profile'), () => import('./pages/Friends'),
   () => import('./pages/Settings'), () => import('./pages/Record'), () => import('./pages/Emojis'),
   () => import('./pages/Invite'), () => import('./components/ActivityForm'),
+  () => import('./pages/recipes/Library'), () => import('./pages/recipes/RecipeDetail'), () => import('./pages/recipes/Plan'),
+  () => import('./pages/recipes/Grocery'),
 ];
 function usePreloadRoutes(enabled: boolean) {
   useEffect(() => {
@@ -50,6 +62,8 @@ function Gate() {
   if (settingsLoading || !profile) return <Boot label="Loading your profile…" />;
   if (!settings?.setupComplete) return <Layout><Setup /></Layout>;
   return (
+    <TimersProvider>
+    <AutoLogger />
     <Layout>
       <Suspense fallback={<div className="page"><Skeleton h={160} /></div>}>
         <Routes>
@@ -63,10 +77,20 @@ function Gate() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/emojis" element={<Emojis />} />
           <Route path="/invite/:code" element={<Invite />} />
+          <Route path="/recipes" element={<Library />} />
+          <Route path="/recipes/new" element={<RecipeEditor />} />
+          <Route path="/recipes/import" element={<ImportRecipe />} />
+          <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
+          <Route path="/plan" element={<Plan />} />
+          <Route path="/grocery" element={<Grocery />} />
+          <Route path="/pantry" element={<Pantry />} />
+          <Route path="/menus" element={<Menus />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </Layout>
+    </TimersProvider>
   );
 }
 

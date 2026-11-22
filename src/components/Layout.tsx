@@ -3,12 +3,12 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useSession } from '../hooks/useSession';
 import { Avatar, Icon } from './ui';
 
-const TABS = [
+const TABS: { to: string; icon: string; l: string; end?: boolean; also?: string[] }[] = [
   { to: '/', icon: 'feed', l: 'Feed', end: true },
   { to: '/log', icon: 'diary', l: 'Diary' },
+  { to: '/recipes', icon: 'recipes', l: 'Recipes', also: ['/plan', '/grocery', '/pantry', '/menus'] },
   { to: '/move', icon: 'move', l: 'Exercise' },
   { to: '/friends', icon: 'friends', l: 'Friends' },
-  { to: '/me', icon: 'me', l: 'Profile' },
 ];
 
 const TITLES: [RegExp, string][] = [
@@ -22,6 +22,12 @@ const TITLES: [RegExp, string][] = [
   [/^\/settings/, 'Settings'],
   [/^\/emojis/, 'Custom emojis'],
   [/^\/invite/, 'Invite'],
+  [/^\/recipes\/import/, 'Import recipes'],
+  [/^\/recipes/, 'Recipes'],
+  [/^\/plan/, 'Meal plan'],
+  [/^\/grocery/, 'Groceries'],
+  [/^\/pantry/, 'Pantry'],
+  [/^\/menus/, 'Menus'],
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -39,7 +45,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
           {TABS.map((t) => (
-            <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavLink key={t.to} to={t.to} end={t.end}
+              className={({ isActive }) => (isActive || t.also?.some((p) => loc.pathname.startsWith(p)) ? 'active' : '')}>
               <Icon name={t.icon} size={23} />
               <span>{t.l}</span>
             </NavLink>
