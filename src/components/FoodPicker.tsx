@@ -29,7 +29,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: Meal; 
           <div className="tabs">
             {(['search', 'photo', 'recent', 'mine', 'recipe', 'quick', ...(hasScanner ? ['scan'] : [])] as Tab[]).map((t) => (
               <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-                {t === 'mine' ? 'My foods' : t === 'quick' ? 'Quick add' : t[0].toUpperCase() + t.slice(1)}
+                {t === 'mine' ? 'My foods' : t === 'quick' ? 'Quick add' : t === 'photo' ? '✨ AI estimate' : t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>

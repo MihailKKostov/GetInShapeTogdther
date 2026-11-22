@@ -189,10 +189,10 @@ function AiSection() {
   });
   return (
     <section ref={ref} id="ai" style={{ scrollMarginTop: 64 }}>
-      <Panel title="AI photo recognition" right={key ? <span className="pill ok">✓ Set up</span> : <span className="pill">Off</span>}>
+      <Panel title="AI food estimates" right={key ? <span className="pill ok">✓ Set up</span> : <span className="pill">Off</span>}>
         <div className="col gap2">
           <p className="small muted" style={{ margin: 0 }}>
-            Estimate calories from a photo of your meal (Diary → Add food → Photo). It uses your own OpenAI API key:
+            Estimate calories from a photo of your meal or a description of what you ate (Diary → Add food → AI estimate). It uses your own OpenAI API key:
             create one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer noopener">platform.openai.com/api-keys</a>.
             Each photo costs a small amount, billed to your OpenAI account.
           </p>

@@ -1,4 +1,4 @@
-// Estimate foods and nutrition from a meal photo with the OpenAI API.
+// Estimate foods and nutrition from a meal photo or a written description with the OpenAI API.
 // The API key is the user's own and lives only on their device (see aiSettings below);
 // requests go straight from the browser to OpenAI, never through WeFit's servers.
 
@@ -54,7 +54,7 @@ const API = 'https://api.openai.com/v1';
 function explain(status: number, body: string): string {
   let msg = '';
   try { msg = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? ''; } catch { /* not JSON */ }
-  if (status === 401) return 'OpenAI rejected the API key. Check it in Settings → AI photo recognition.';
+  if (status === 401) return 'OpenAI rejected the API key. Check it in Settings → AI food estimates.';
   if (status === 429) return /quota|billing/i.test(msg)
     ? 'Your OpenAI account is out of credit. Add billing at platform.openai.com.'
     : 'OpenAI is rate-limiting requests. Wait a moment and try again.';
@@ -107,13 +107,40 @@ const INSTRUCTIONS = [
   'If the photo contains no food, return an empty list and say so in the note.',
 ].join(' ');
 
+const TEXT_INSTRUCTIONS = [
+  'You are a careful nutrition assistant for a food-logging app.',
+  'The user describes what they ate or drank in their own words (any language). Split it into distinct foods and drinks.',
+  'Use the quantities they give (e.g. "2 eggs", "a large bowl", "200 g", "a pint"); convert them to grams (ml for drinks).',
+  'When no amount is given, assume one typical single serving and mention that assumption in the note.',
+  'Estimate nutrition for that portion using typical reference values (e.g. USDA), including cooking fat when the preparation implies it (fried, buttered, creamy).',
+  'For restaurant or branded items, use typical published values for that item.',
+  'Numbers must be for the stated portion, not per 100 g. Round grams to the nearest 5 and nutrients to whole numbers.',
+  'If the text is not about food or drink, return an empty list and say so in the note. Write food names in the user\'s language.',
+].join(' ');
+
 /** Send a photo (data URL or https URL) to OpenAI and get back estimated items. */
-export async function analyzeFoodPhoto(
+export function analyzeFoodPhoto(
   image: string,
   opts: { key: string; model: string; hint?: string; signal?: AbortSignal },
 ): Promise<PhotoResult> {
   const content: unknown[] = [{ type: 'image_url', image_url: { url: image, detail: 'high' } }];
   if (opts.hint?.trim()) content.unshift({ type: 'text', text: `Extra context from the user: ${opts.hint.trim().slice(0, 300)}` });
+  return estimate(INSTRUCTIONS, content, opts);
+}
+
+/** Estimate foods and nutrition from a written description of a meal. */
+export function analyzeFoodText(
+  description: string,
+  opts: { key: string; model: string; signal?: AbortSignal },
+): Promise<PhotoResult> {
+  return estimate(TEXT_INSTRUCTIONS, [{ type: 'text', text: description.trim().slice(0, 1500) }], opts);
+}
+
+async function estimate(
+  instructions: string,
+  content: unknown[],
+  opts: { key: string; model: string; signal?: AbortSignal },
+): Promise<PhotoResult> {
   const res = await fetch(`${API}/chat/completions`, {
     method: 'POST',
     signal: opts.signal,
@@ -121,7 +148,7 @@ export async function analyzeFoodPhoto(
     body: JSON.stringify({
       model: opts.model,
       messages: [
-        { role: 'system', content: INSTRUCTIONS },
+        { role: 'system', content: instructions },
         { role: 'user', content },
       ],
       response_format: { type: 'json_schema', json_schema: { name: 'meal_estimate', strict: true, schema: SCHEMA } },

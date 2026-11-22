@@ -5,10 +5,10 @@ import type { Food, FoodEntry, Meal, Nutrients } from '../data/types';
 import { useObjectUrls } from '../hooks/useObjectUrls';
 import { useMe } from '../hooks/useSession';
 import { randomId } from '../lib/avatar';
-import { aiSettings, analyzeFoodPhoto, type PhotoItem } from '../lib/foodPhoto';
+import { aiSettings, analyzeFoodPhoto, analyzeFoodText, type PhotoItem } from '../lib/foodPhoto';
 import { resizeImage } from '../lib/images';
 import { fmtNum } from '../lib/units';
-import { Empty, ErrorLine, Icon, NumInput, Spinner, useToast } from './ui';
+import { Empty, ErrorLine, Icon, NumInput, Seg, Spinner, useToast } from './ui';
 
 /** Re-renders when the per-device AI settings change (here or in another tab). */
 export function useAiSettings() {
@@ -48,6 +48,8 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
   const { key, model } = useAiSettings();
   const camRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<'photo' | 'text'>('photo');
+  const [desc, setDesc] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,8 +62,8 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
 
   if (!key) {
     return (
-      <Empty icon="📸" title="Estimate calories from a photo">
-        <p>Snap your meal and get an estimate of each food, its portion and nutrition. This uses your own OpenAI API key, which you add once in Settings.</p>
+      <Empty icon="✨" title="Let AI estimate your meal">
+        <p>Snap a photo of your meal, or just describe what you ate, and get an estimate of each food, its portion and nutrition. This uses your own OpenAI API key, which you add once in Settings.</p>
         <Link className="btn primary" to="/settings#ai">Add OpenAI key in Settings</Link>
       </Empty>
     );
@@ -72,15 +74,21 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
     setFile(f); setRows(null); setErr(null); setNote('');
   };
 
+  const switchMode = (m: 'photo' | 'text') => {
+    abort.current?.abort();
+    setMode(m); setRows(null); setErr(null); setNote(''); setBusy(false);
+  };
+
   const analyze = async () => {
-    if (!file) return;
+    if (mode === 'photo' ? !file : !desc.trim()) return;
     setBusy(true); setErr(null); setRows(null);
     abort.current?.abort();
     const ctl = new AbortController();
     abort.current = ctl;
     try {
-      const img = await resizeImage(file, 1024, 'image/jpeg', 0.85);
-      const res = await analyzeFoodPhoto(await blobToDataUrl(img.blob), { key, model, hint, signal: ctl.signal });
+      const res = mode === 'photo'
+        ? await analyzeFoodPhoto(await blobToDataUrl((await resizeImage(file!, 1024, 'image/jpeg', 0.85)).blob), { key, model, hint, signal: ctl.signal })
+        : await analyzeFoodText(desc, { key, model, signal: ctl.signal });
       setRows(res.items.map((i) => ({ ...i, id: randomId(8), on: true, origGrams: i.grams })));
       setNote(res.note);
     } catch (e) {
@@ -109,6 +117,22 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
 
   return (
     <div className="col">
+      <Seg<'photo' | 'text'> block value={mode} onChange={switchMode} options={[{ v: 'photo', l: '📸 Photo' }, { v: 'text', l: '✍️ Describe' }]} />
+      {mode === 'text' && !rows && (
+        <>
+          <textarea
+            autoFocus value={desc} maxLength={1500} rows={4}
+            placeholder="What did you eat? e.g. 2 scrambled eggs with butter, a slice of sourdough and a flat white with oat milk"
+            onChange={(e) => setDesc(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze(); }}
+          />
+          <p className="small muted" style={{ margin: 0 }}>Include amounts when you know them ("200 g", "a large bowl", "2 slices"). Restaurant and branded items work too.</p>
+          <button className="btn primary" onClick={analyze} disabled={busy || !desc.trim()}>
+            {busy ? <><Spinner /> Estimating…</> : 'Estimate calories'}
+          </button>
+        </>
+      )}
+      {mode === 'photo' && <>
       <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
       {preview ? (
@@ -128,6 +152,7 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
           </button>
         </>
       )}
+      </>}
       <ErrorLine>{err}</ErrorLine>
       {err && /Settings/.test(err) && <Link className="small" to="/settings#ai">Open Settings</Link>}
 
@@ -157,12 +182,14 @@ export function PhotoTab({ date, meal, onDone }: { date: string; meal: Meal; onD
             })}
           </div>
           <div className="row between">
-            <button className="btn ghost sm" onClick={() => { setRows(null); }}>Try again</button>
+            <button className="btn ghost sm" onClick={() => { setRows(null); }}>{mode === 'text' ? 'Edit description' : 'Try again'}</button>
             <button className="btn primary" onClick={add} disabled={!chosen.length}>Add {chosen.length} · {fmtNum(total)} kcal</button>
           </div>
         </>
       )}
-      <p className="small faint" style={{ margin: 0 }}>Photos are sent to OpenAI using your API key ({model}) and billed to your OpenAI account. They aren't stored by WeFit.</p>
+      <p className="small faint" style={{ margin: 0 }}>
+        {mode === 'photo' ? 'Photos are' : 'Your description is'} sent to OpenAI using your API key ({model}) and billed to your OpenAI account. {mode === 'photo' ? 'Photos aren\'t' : 'It isn\'t'} stored by WeFit.
+      </p>
     </div>
   );
 }
