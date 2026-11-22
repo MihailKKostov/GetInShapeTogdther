@@ -26,7 +26,7 @@ export default function Setup() {
     await updateProfile(uid, { nickname: nick.trim().slice(0, 30) });
     await logWeight(uid, dateKey(), currentKg);
     await saveSettings(uid, final);
-  }, { minPending: 700 });
+  });
 
   return (
     <div className="page">

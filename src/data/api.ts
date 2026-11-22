@@ -1,11 +1,10 @@
 import {
   arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, limit,
-  orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, updateDoc, where,
+  orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc, where,
   writeBatch, type DocumentData,
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref as sref, uploadBytesResumable } from 'firebase/storage';
 import type { User } from 'firebase/auth';
-import { db, storage } from '../firebase';
+import { db, loadStorage } from '../firebase';
 import { randomId, randomSeed } from '../lib/avatar';
 import { addDays, dateKey } from '../lib/dates';
 import { resizeImage, type ResizedImage } from '../lib/images';
@@ -16,6 +15,18 @@ import {
   type Sharing, type UserProfile, type Visibility, type WeightEntry,
 } from './types';
 
+// ───────────────────────── optimistic writes
+// Firestore applies writes to its local cache (and every live listener) immediately; the returned
+// promise only resolves once the server confirms. For snappy UI we don't wait for that confirmation.
+// Writes made offline are queued and sent later. Real failures surface as a toast (see ToastProvider).
+export const WRITE_ERROR_EVENT = 'wefit:write-error';
+export function background<T>(p: Promise<T>, what = 'changes'): void {
+  p.catch((e) => {
+    console.error(`write failed: ${what}`, e);
+    window.dispatchEvent(new CustomEvent(WRITE_ERROR_EVENT, { detail: what }));
+  });
+}
+
 // ───────────────────────── refs
 export const userRef = (uid: string) => doc(db, 'users', uid);
 export const settingsRef = (uid: string) => doc(db, 'users', uid, 'private', 'settings');
@@ -25,6 +36,7 @@ export const diaryCol = (uid: string) => collection(db, 'users', uid, 'diary');
 export const weightsCol = (uid: string) => collection(db, 'users', uid, 'weights');
 export const activitiesCol = (uid: string) => collection(db, 'users', uid, 'activities');
 export const foodsCol = (uid: string) => collection(db, 'users', uid, 'foods');
+export const recipeImportsCol = (uid: string) => collection(db, 'users', uid, 'recipeImports');
 export const friendsCol = (uid: string) => collection(db, 'users', uid, 'friends');
 export const postsCol = () => collection(db, 'posts');
 export const reactionsCol = (postId: string) => collection(db, 'posts', postId, 'reactions');
@@ -51,7 +63,7 @@ export async function ensureProfile(user: User): Promise<void> {
     };
     await setDoc(ref, { ...profile, createdAt: serverTimestamp(), lastActiveAt: serverTimestamp() });
   } else {
-    await updateDoc(ref, { lastActiveAt: serverTimestamp() }).catch(() => undefined);
+    updateDoc(ref, { lastActiveAt: serverTimestamp() }).catch(() => undefined);
   }
 }
 
@@ -61,7 +73,7 @@ export function displayName(p: Pick<UserProfile, 'nickname' | 'displayName'> | n
 }
 
 export async function updateProfile(uid: string, data: Partial<UserProfile>) {
-  await updateDoc(userRef(uid), data as DocumentData);
+  background(updateDoc(userRef(uid), data as DocumentData), 'your profile');
 }
 
 export function computeShared(sharing: Sharing, s: PrivateSettings | null, latestKg: number | undefined): SharedValues {
@@ -90,18 +102,21 @@ export async function syncShared(uid: string, sharing?: Sharing) {
 }
 
 export async function setSharing(uid: string, sharing: Sharing) {
-  await syncShared(uid, sharing);
+  // Flip the toggle right away; recompute the shared values in the background.
+  background(updateDoc(userRef(uid), { sharing }), 'privacy settings');
+  background(syncShared(uid, sharing), 'privacy settings');
 }
 
 export async function saveSettings(uid: string, s: PrivateSettings) {
-  await setDoc(settingsRef(uid), s);
-  await syncShared(uid);
+  background(setDoc(settingsRef(uid), s), 'your goals');
+  background(syncShared(uid), 'your goals');
 }
 
 // ───────────────────────── storage
 export async function uploadImage(
   path: string, img: ResizedImage, onProgress?: (pct: number) => void,
 ): Promise<string> {
+  const { storage, ref: sref, uploadBytesResumable, getDownloadURL } = await loadStorage();
   const task = uploadBytesResumable(sref(storage, path), img.blob, {
     contentType: img.type,
     cacheControl: 'public, max-age=31536000',
@@ -132,8 +147,8 @@ export async function uploadPostPhotos(uid: string, files: File[], onProgress?: 
 
 // ───────────────────────── weights
 export async function logWeight(uid: string, date: string, kg: number) {
-  await setDoc(doc(weightsCol(uid), date), { date, kg: Math.round(kg * 100) / 100, createdAt: serverTimestamp() });
-  await syncShared(uid);
+  background(setDoc(doc(weightsCol(uid), date), { date, kg: Math.round(kg * 100) / 100, createdAt: serverTimestamp() }), 'your weight');
+  background(syncShared(uid), 'your weight');
 }
 
 export async function deleteWeight(uid: string, date: string) {
@@ -143,25 +158,26 @@ export async function deleteWeight(uid: string, date: string) {
 
 // ───────────────────────── diary
 export async function addFoodEntry(uid: string, date: string, entry: FoodEntry, food: Food) {
-  await setDoc(diaryRef(uid, date), { date, entries: arrayUnion(entry) }, { merge: true });
-  // Recent foods list (most recent first, unique, capped).
-  const rref = recentsRef(uid);
-  const snap = await getDoc(rref);
-  const items = ((snap.data()?.items ?? []) as Food[]).filter((f) => f.id !== food.id);
-  await setDoc(rref, { items: [food, ...items].slice(0, 40) });
+  background(setDoc(diaryRef(uid, date), { date, entries: arrayUnion(entry) }, { merge: true }), 'food entry');
+  // Recent foods list (most recent first, unique, capped) — not worth waiting for.
+  background((async () => {
+    const rref = recentsRef(uid);
+    const snap = await getDoc(rref);
+    const items = ((snap.data()?.items ?? []) as Food[]).filter((f) => f.id !== food.id);
+    await setDoc(rref, { items: [food, ...items].slice(0, 40) });
+  })(), 'recent foods');
 }
 
 export async function removeFoodEntry(uid: string, date: string, entry: FoodEntry) {
-  await updateDoc(diaryRef(uid, date), { entries: arrayRemove(entry) });
+  background(updateDoc(diaryRef(uid, date), { entries: arrayRemove(entry) }), 'food entry');
 }
 
-export async function replaceFoodEntry(uid: string, date: string, entry: FoodEntry) {
-  await runTransaction(db, async (tx) => {
-    const ref = diaryRef(uid, date);
-    const snap = await tx.get(ref);
-    const entries = ((snap.data()?.entries ?? []) as FoodEntry[]).map((e) => (e.id === entry.id ? entry : e));
-    tx.set(ref, { date, entries }, { merge: true });
-  });
+/** Swap an entry for an edited copy. A batch (unlike a transaction) applies locally and works offline. */
+export async function replaceFoodEntry(uid: string, date: string, old: FoodEntry, entry: FoodEntry) {
+  const batch = writeBatch(db);
+  batch.update(diaryRef(uid, date), { entries: arrayRemove(old) });
+  batch.update(diaryRef(uid, date), { entries: arrayUnion(entry) });
+  background(batch.commit(), 'food entry');
 }
 
 export async function copyMeal(uid: string, from: string, to: string, meal: FoodEntry['meal']) {
@@ -174,11 +190,18 @@ export async function copyMeal(uid: string, from: string, to: string, meal: Food
 }
 
 export async function setWater(uid: string, date: string, ml: number) {
-  await setDoc(diaryRef(uid, date), { date, waterMl: Math.max(0, ml) }, { merge: true });
+  background(setDoc(diaryRef(uid, date), { date, waterMl: Math.max(0, ml) }, { merge: true }), 'water');
 }
 
 export async function saveCustomFood(uid: string, food: Food) {
   await setDoc(doc(foodsCol(uid), food.id), food);
+}
+
+/** Ask the importRecipe Cloud Function to read a recipe page; returns the request doc id to listen to. */
+export function requestRecipeImport(uid: string, url: string): string {
+  const ref = doc(recipeImportsCol(uid));
+  background(setDoc(ref, { url, status: 'pending', createdAt: serverTimestamp() }), 'recipe import');
+  return ref.id;
 }
 
 export async function deleteCustomFood(uid: string, id: string) {
@@ -201,12 +224,12 @@ export async function recomputeDayStats(uid: string) {
   let cursor = on.has(today) ? today : addDays(today, -1);
   let streak = 0;
   while (on.has(cursor)) { streak++; cursor = addDays(cursor, -1); }
-  await updateDoc(userRef(uid), {
+  background(updateDoc(userRef(uid), {
     'stats.streak': streak,
     'stats.bestStreak': best,
     'stats.daysOnTarget': on.size,
     'stats.lastClosedDay': closed[closed.length - 1] ?? null,
-  });
+  }), 'your streak');
   return { streak, best, daysOnTarget: on.size };
 }
 
@@ -217,9 +240,9 @@ export async function closeDay(
   const totals = dayTotals(day ?? undefined);
   const budget = dayBudget(settings, day ?? undefined);
   const onTarget = isOnTarget(settings, totals.kcal, budget);
-  await setDoc(diaryRef(uid, date), {
+  background(setDoc(diaryRef(uid, date), {
     date, closed: true, onTarget, budget, totals, closedAt: serverTimestamp(),
-  }, { merge: true });
+  }, { merge: true }), 'your day');
   const { streak } = await recomputeDayStats(uid);
   if (opts.share) {
     await createPost(uid, {
@@ -236,7 +259,7 @@ export async function closeDay(
 }
 
 export async function reopenDay(uid: string, date: string) {
-  await updateDoc(diaryRef(uid, date), { closed: false, onTarget: false });
+  background(updateDoc(diaryRef(uid, date), { closed: false, onTarget: false }), 'your day');
   await recomputeDayStats(uid);
 }
 
@@ -255,7 +278,7 @@ export async function createActivity(uid: string, a: NewActivity, opts: { share:
     'stats.activeSec': increment(Math.round(a.durationSec)),
   });
   batch.set(diaryRef(uid, date), { date, exerciseKcal: increment(Math.round(a.kcal)) }, { merge: true });
-  await batch.commit();
+  background(batch.commit(), 'your workout');
   if (opts.share && a.visibility === 'friends') {
     const postId = await createPost(uid, {
       kind: 'activity',
@@ -267,7 +290,7 @@ export async function createActivity(uid: string, a: NewActivity, opts: { share:
         elevationM: a.elevationM, kcal: a.kcal, route: a.route, exercises: a.exercises,
       },
     });
-    await updateDoc(ref, { postId });
+    background(updateDoc(ref, { postId }), 'your workout');
   }
   return ref.id;
 }
@@ -289,7 +312,7 @@ export async function deleteActivity(uid: string, a: Activity) {
 }
 
 export async function updateActivityMeta(uid: string, id: string, data: { title: string; notes: string; visibility: Visibility }) {
-  await updateDoc(doc(activitiesCol(uid), id), data);
+  background(updateDoc(doc(activitiesCol(uid), id), data), 'your workout');
 }
 
 // ───────────────────────── posts
@@ -306,7 +329,7 @@ export interface NewPost {
 
 export async function createPost(uid: string, p: NewPost): Promise<string> {
   const ref = doc(postsCol());
-  await setDoc(ref, {
+  background(setDoc(ref, {
     authorId: uid,
     kind: p.kind,
     text: p.text.slice(0, 1000),
@@ -317,12 +340,12 @@ export async function createPost(uid: string, p: NewPost): Promise<string> {
     activity: p.activity,
     day: p.day,
     createdAt: serverTimestamp(),
-  });
+  }), 'your post');
   return ref.id;
 }
 
 export async function updatePost(id: string, data: { text?: string; visibility?: Visibility; progress?: boolean }) {
-  await updateDoc(doc(postsCol(), id), data);
+  background(updateDoc(doc(postsCol(), id), data), 'your post');
 }
 
 export async function deletePost(p: Post) {
@@ -331,8 +354,10 @@ export async function deletePost(p: Post) {
   reactions.docs.forEach((d) => batch.delete(d.ref));
   await batch.commit();
   await deleteDoc(doc(postsCol(), p.id));
-  // Photos are only deleted when they aren't shared with an activity's other post.
-  await Promise.all((p.photos ?? []).map((ph) => deleteObject(sref(storage, ph.path)).catch(() => undefined)));
+  if (p.photos?.length) {
+    const { storage, ref: sref, deleteObject } = await loadStorage();
+    await Promise.all(p.photos.map((ph) => deleteObject(sref(storage, ph.path)).catch(() => undefined)));
+  }
 }
 
 export async function toggleReaction(postId: string, uid: string, emoji: string, on: boolean) {
@@ -396,5 +421,6 @@ export async function createEmoji(uid: string, name: string, img: ResizedImage, 
 
 export async function deleteEmoji(e: CustomEmoji) {
   await deleteDoc(doc(emojisCol(), e.name));
+  const { storage, ref: sref, deleteObject } = await loadStorage();
   await deleteObject(sref(storage, e.path)).catch(() => undefined);
 }

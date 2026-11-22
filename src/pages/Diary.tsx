@@ -58,19 +58,19 @@ export default function Diary() {
       {day.loading ? <Skeleton h={300} /> : <EnergySummary totals={totals} budget={budget} exercise={day.data?.exerciseKcal ?? 0} />}
 
       <Panel title="Food diary" tight right={closed ? <span className="pill ok">Completed</span> : undefined}>
-        <div>
+        {day.loading ? <div style={{ padding: 16 }}><Skeleton h={160} /></div> : <div>
           {MEALS.map((m) => (
             <MealGroup
               key={m}
               meal={m}
               date={date}
-              entries={(day.data?.entries ?? []).filter((e) => e.meal === m)}
+              entries={(day.data?.entries ?? []).filter((e) => e.meal === m).sort((a, b) => a.addedAt - b.addedAt)}
               onAdd={() => setAdding(m)}
               onEdit={setEditing}
               locked={closed}
             />
           ))}
-        </div>
+        </div>}
       </Panel>
 
       <WaterPanel date={date} ml={day.data?.waterMl ?? 0} goal={settings.waterGoalMl} />
@@ -168,7 +168,7 @@ function MealGroup({ meal, date, entries, onAdd, onEdit, locked }: {
             <button key={e.id} className="li" disabled={locked} onClick={() => !locked && onEdit(e)} style={{ padding: '8px 16px', cursor: locked ? 'default' : 'pointer' }}>
               <div className="main">
                 <div className="name">{e.name}</div>
-                <div className="sub">{e.source === 'quick' ? 'Quick add' : `${fmtNum(e.grams)} g`}{e.brand ? ` · ${e.brand}` : ''}</div>
+                <div className="sub">{e.source === 'quick' ? 'Quick add' : e.servings != null ? `${fmtNum(e.servings, e.servings % 1 ? 1 : 0)} serving${e.servings === 1 ? '' : 's'}` : `${fmtNum(e.grams)} g`}{e.brand ? ` · ${e.brand}` : ''}</div>
               </div>
               <div className="end"><b>{fmtNum(e.n.kcal)}</b> <span className="small muted">kcal</span></div>
             </button>
@@ -182,11 +182,14 @@ function MealGroup({ meal, date, entries, onAdd, onEdit, locked }: {
 function EntryEditor({ date, entry, onClose }: { date: string; entry: FoodEntry; onClose: () => void }) {
   const { uid } = useMe();
   const toast = useToast();
-  const [grams, setGrams] = useState<number | ''>(entry.grams);
+  const bySrv = entry.servings != null;
+  // Per-serving foods (recipes) are edited in servings; 1 serving is stored as 100 "grams".
+  const [amount, setAmount] = useState<number | ''>(bySrv ? entry.servings! : entry.grams);
+  const grams = bySrv ? (Number(amount) || 0) * 100 : amount;
   const per100 = scaleNutrients(entry.n, entry.grams ? (100 * 100) / entry.grams : 100);
   const n = entry.source === 'quick' ? entry.n : scaleNutrients(per100, Number(grams) || 0);
   const save = useAction(async () => {
-    await replaceFoodEntry(uid, date, { ...entry, grams: Number(grams) || 0, n });
+    await replaceFoodEntry(uid, date, entry, { ...entry, grams: Number(grams) || 0, n, ...(bySrv ? { servings: Number(amount) || 0 } : {}) });
     return true;
   });
   const del = useAction(async () => { await removeFoodEntry(uid, date, entry); return true; });
@@ -194,7 +197,7 @@ function EntryEditor({ date, entry, onClose }: { date: string; entry: FoodEntry;
     <Modal title="Edit entry" onClose={onClose}>
       <div><h2>{entry.name}</h2>{entry.brand && <div className="small muted">{entry.brand}</div>}</div>
       {entry.source !== 'quick' && (
-        <label className="f"><span>Amount</span><NumInput value={grams} onChange={setGrams} unit="g" autoFocus /></label>
+        <label className="f"><span>{bySrv ? 'Servings' : 'Amount'}</span><NumInput value={amount} onChange={setAmount} unit={bySrv ? '×' : 'g'} autoFocus /></label>
       )}
       <NutrientSummary n={n} />
       <div className="row">
@@ -268,7 +271,7 @@ function CompletePanel({ date, day, totals, budget, onTarget }: { date: string; 
     const r = await closeDay(uid, date, settings, day, { share, note: note.trim() });
     setStreak(r.streak);
     toast(r.onTarget ? `On target! Streak: ${r.streak} day${r.streak === 1 ? '' : 's'} 🔥` : 'Day completed', r.onTarget ? 'ok' : 'info');
-  }, { minPending: 600 });
+  });
   const reopen = useAction(async () => { await reopenDay(uid, date); setStreak(null); });
 
   if (day?.closed) {

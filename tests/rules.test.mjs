@@ -176,6 +176,21 @@ describe('shared vs private data', () => {
   });
 });
 
+describe('recipe imports', () => {
+  test('owner creates a pending request; nobody can forge a result', async () => {
+    await seedUsers();
+    const ok = { url: 'https://example.com/recipe', status: 'pending', createdAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(db('alice'), 'users/alice/recipeImports/r1'), ok));
+    await assertFails(setDoc(doc(db('alice'), 'users/alice/recipeImports/r2'), { ...ok, status: 'done' }));
+    await assertFails(setDoc(doc(db('alice'), 'users/alice/recipeImports/r3'), { ...ok, recipe: { name: 'x' } }));
+    await assertFails(setDoc(doc(db('alice'), 'users/alice/recipeImports/r4'), { ...ok, url: 'file:///etc/passwd' }));
+    await assertFails(updateDoc(doc(db('alice'), 'users/alice/recipeImports/r1'), { status: 'done' }));
+    await assertFails(setDoc(doc(db('bob'), 'users/alice/recipeImports/r5'), ok));
+    await assertFails(getDoc(doc(db('bob'), 'users/alice/recipeImports/r1')));
+    await assertSucceeds(getDoc(doc(db('alice'), 'users/alice/recipeImports/r1')));
+  });
+});
+
 describe('custom emojis', () => {
   test('create with matching name; no overwrite; only creator deletes', async () => {
     const e = { name: 'legday', url: 'u', path: 'p', createdBy: 'bob' };

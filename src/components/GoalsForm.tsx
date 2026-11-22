@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { ActivityLevel, GoalType, PrivateSettings, Sex, Units } from '../data/types';
 import {
-  ACTIVITY_FACTORS, RATE_OPTIONS, bmr, goalEta, macroGrams, planRate, suggestedCalories, tdee, type RatePlan,
+  ACTIVITY_FACTORS, RATE_OPTIONS, bmr, goalEta, macroGrams, maxSafeLossRate, minDailyCalories, planRate,
+  rawCalorieTarget, suggestedCalories, tdee, weeklyLossAt, type RatePlan,
 } from '../lib/nutrition';
 import { addDays, dateKey, daysBetween, parseKey } from '../lib/dates';
 import { fmtNum, kgTo, toKg, weightUnit } from '../lib/units';
@@ -44,7 +45,10 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
     // With a target date, re-pick the closest rate whenever the date or target changes.
     if ((k === 'targetDate' || k === 'targetWeightKg' || k === 'goalType') && next.targetDate && next.goalType !== 'maintain') {
       const plan = planRate(weightKg, next.targetWeightKg, next.targetDate, dateKey());
-      if (plan) next.weeklyRateKg = plan.rate;
+      if (plan) {
+        const safe = next.goalType === 'lose' ? maxSafeLossRate(next, weightKg) : null;
+        next.weeklyRateKg = safe != null ? Math.min(plan.rate, safe) : next.goalType === 'lose' ? RATE_OPTIONS[0] : plan.rate;
+      }
     }
     if (next.calorieGoalAuto) next.calorieGoal = suggestedCalories(next, weightKg);
     onChange(next);
@@ -97,6 +101,7 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
           </label>
         )}
       </div>
+      {s.goalType === 'lose' && s.calorieGoalAuto && <PaceFloorWarning s={s} weightKg={weightKg} onPick={(r) => set('weeklyRateKg', r)} />}
       {s.goalType !== 'maintain' && <RatePlanNote s={s} weightKg={weightKg} plan={plan} />}
 
       <div className="stats c3">
@@ -111,6 +116,12 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
           <Toggle on={s.calorieGoalAuto} onChange={(v) => { const n = { ...s, calorieGoalAuto: v }; if (v) n.calorieGoal = suggested; onChange(n); }} label="Use suggested" />
         </div>
         <NumInput value={s.calorieGoal} onChange={(v) => v !== '' && onChange({ ...s, calorieGoal: Math.round(v), calorieGoalAuto: false })} unit="kcal" />
+        {!s.calorieGoalAuto && s.calorieGoal < minDailyCalories(s.sex) && (
+          <div className="warn-box">
+            ⚠️ {fmtNum(s.calorieGoal)} kcal/day is below the recommended minimum of <b>{fmtNum(minDailyCalories(s.sex))} kcal/day</b> for {s.sex === 'male' ? 'men' : 'women'}.
+            Eating this little without medical supervision isn't recommended.
+          </div>
+        )}
       </div>
 
       <div className="col">
@@ -149,6 +160,36 @@ export function GoalsForm({ s, onChange, weightKg }: { s: PrivateSettings; onCha
   );
 }
 
+/** Warns when the chosen loss pace would need fewer calories than the recommended daily minimum. */
+function PaceFloorWarning({ s, weightKg, onPick }: { s: PrivateSettings; weightKg: number; onPick: (rate: number) => void }) {
+  const floor = minDailyCalories(s.sex);
+  const raw = rawCalorieTarget(s, weightKg);
+  if (raw >= floor) return null;
+  const u = s.units;
+  const r = (kg: number) => `${fmtNum(kgTo(u, kg), 2)} ${weightUnit(u)}/week`;
+  const safe = maxSafeLossRate(s, weightKg);
+  const actual = Math.max(0, weeklyLossAt(s, weightKg, floor));
+  return (
+    <div className="warn-box">
+      <div>
+        ⚠️ At {r(s.weeklyRateKg)} your target would be <b>{fmtNum(Math.round(raw / 10) * 10)} kcal/day</b>, below the recommended
+        minimum of <b>{fmtNum(floor)} kcal/day</b> for {s.sex === 'male' ? 'men' : 'women'}. Your target is kept at {fmtNum(floor)} kcal,
+        so you'd lose about {r(actual)} instead.
+      </div>
+      {safe != null ? (
+        <div className="row wrap" style={{ marginTop: 8 }}>
+          <span>{r(safe)} is the fastest pace that stays above the minimum.</span>
+          <button type="button" className="btn sm" onClick={() => onPick(safe)}>Use {r(safe)}</button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 6 }}>
+          Even the slowest pace goes below it. Logged workouts add to your daily budget, or consider talking to a doctor or dietitian about a plan.
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Explains the suggested rate and when the target will be reached at the chosen rate. */
 function RatePlanNote({ s, weightKg, plan }: { s: PrivateSettings; weightKg: number; plan: RatePlan | null }) {
   const u = s.units;
@@ -172,7 +213,13 @@ function RatePlanNote({ s, weightKg, plan }: { s: PrivateSettings; weightKg: num
     );
   }
 
-  const eta = goalEta(weightKg, s.targetWeightKg, s.weeklyRateKg, today);
+  // Pace you'd actually see at your calorie goal (it can differ when the goal is held at the minimum or set by hand).
+  const actual = (s.goalType === 'lose' ? 1 : -1) * weeklyLossAt(s, weightKg, s.calorieGoal);
+  const pace = Math.abs(actual - s.weeklyRateKg) < 0.03 ? s.weeklyRateKg : actual;
+  if (pace <= 0.02) {
+    return <div className="warn-box">At {fmtNum(s.calorieGoal)} kcal/day you won't move toward your target. {s.goalType === 'lose' ? 'Lower' : 'Raise'} your calorie goal or turn on "Use suggested".</div>;
+  }
+  const eta = goalEta(weightKg, s.targetWeightKg, pace, today);
   const weeks = eta ? Math.round(daysBetween(today, eta) / 7) : 0;
   const offset = eta && s.targetDate ? Math.round(daysBetween(s.targetDate, eta) / 7) : 0;
 
@@ -182,13 +229,14 @@ function RatePlanNote({ s, weightKg, plan }: { s: PrivateSettings; weightKg: num
         <div className="small">
           To reach {w(s.targetWeightKg)} by <b>{dateLabel(s.targetDate!)}</b> you'd need about <b>{r(plan.requiredKgPerWeek)}</b>.{' '}
           {plan.tooFast
-            ? <span className="warn">That's faster than the recommended maximum, so we suggest {r(plan.rate)}.</span>
+            ? <span className="warn">That's faster than the recommended maximum of {r(plan.rate)}.</span>
             : <>Closest option: <b>{r(plan.rate)}</b>.</>}
+          {s.goalType === 'lose' && s.weeklyRateKg < plan.rate && <> We suggest {r(s.weeklyRateKg)} to keep you above the daily calorie minimum.</>}
         </div>
       )}
       {eta && (
         <div className="small">
-          At {r(s.weeklyRateKg)} you'll reach your target around <b>{dateLabel(eta)}</b> ({weeks} week{weeks === 1 ? '' : 's'})
+          At {pace === s.weeklyRateKg ? r(pace) : `about ${r(pace)}`} you'll reach your target around <b>{dateLabel(eta)}</b> ({weeks} week{weeks === 1 ? '' : 's'})
           {s.targetDate && (
             offset === 0 ? <span className="ok"> — right on time.</span>
               : offset > 0 ? <span className="muted"> — {offset} week{offset === 1 ? '' : 's'} after your target date.</span>

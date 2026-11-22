@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Skeleton, Spinner, ToastProvider } from './components/ui';
@@ -28,8 +28,23 @@ function Boot({ label }: { label: string }) {
   );
 }
 
+const preload = [
+  () => import('./pages/Activities'), () => import('./pages/Profile'), () => import('./pages/Friends'),
+  () => import('./pages/Settings'), () => import('./pages/Record'), () => import('./pages/Emojis'),
+  () => import('./pages/Invite'), () => import('./components/ActivityForm'),
+];
+function usePreloadRoutes(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const run = () => preload.forEach((load) => load().catch(() => undefined));
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(run); else setTimeout(run, 1200);
+  }, [enabled]);
+}
+
 function Gate() {
   const { user, authLoading, settings, settingsLoading, profile } = useSession();
+  usePreloadRoutes(!!settings?.setupComplete);
   if (authLoading) return <Boot label="Signing in…" />;
   if (!user) return <Login />;
   if (settingsLoading || !profile) return <Boot label="Loading your profile…" />;

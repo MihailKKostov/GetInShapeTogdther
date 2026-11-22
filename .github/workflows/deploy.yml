@@ -34,6 +34,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      - name: Recipe import unit tests
+        run: npm run test:unit
       - name: Firestore & Storage rules tests (emulators)
         run: npm run test:rules
 
@@ -69,6 +71,45 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
       - name: Deploy hosting, Firestore rules & indexes, Storage rules
         run: npx firebase deploy --only hosting,firestore,storage --project "${{ env.FIREBASE_PROJECT }}" --non-interactive --force
+
+  # Separate job so the app itself still deploys if Cloud Functions aren't set up yet.
+  deploy-functions:
+    name: Deploy Cloud Functions
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Run functions in the same region as the Firestore database
+        run: |
+          LOC=$(gcloud firestore databases describe --database='(default)' --project "$FIREBASE_PROJECT" --format='value(locationId)')
+          case "$LOC" in
+            nam5) REGION=us-central1 ;;
+            eur3) REGION=europe-west1 ;;
+            *) REGION="$LOC" ;;
+          esac
+          echo "Firestore location: $LOC -> functions region: $REGION"
+          echo "LOCATION=$REGION" > functions/.env
+      - name: Deploy functions
+        run: npx firebase deploy --only functions --project "${{ env.FIREBASE_PROJECT }}" --non-interactive --force
 
   preview:
     name: PR preview channel

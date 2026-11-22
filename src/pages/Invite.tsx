@@ -22,7 +22,7 @@ export default function Invite() {
     await acceptInvite(uid, inv!);
     toast(`You and ${inv!.inviterName} are now friends`);
     setTimeout(() => nav(`/u/${inv!.createdBy}`), 500);
-  }, { minPending: 600 });
+  });
 
   if (inv === undefined) return <div className="page"><Skeleton h={220} /></div>;
   if (inv === null) return <div className="page"><div className="panel"><Empty icon="🤷" title="Invite not found">This link is invalid or was revoked. Ask your friend for a new one. <Link to="/">Go home</Link></Empty></div></div>;

@@ -54,7 +54,7 @@ function useShareToggle(p: UserProfile, self: boolean) {
     const next = { ...sharing, [k]: !sharing[k] };
     await setSharing(uid, next);
     toast(`${LABELS[k]} is now ${next[k] ? 'visible to friends' : 'private'}`);
-  }, { minPending: 300, doneFor: 10 });
+  }, { doneFor: 10 });
   const badge = (k: ShareKey) => (
     <VisBadge
       pub={sharing[k]}

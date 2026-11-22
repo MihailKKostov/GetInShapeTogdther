@@ -6,7 +6,6 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
-import { connectStorageEmulator, getStorage } from 'firebase/storage';
 
 const env = import.meta.env;
 const useEmulators = env.VITE_USE_EMULATORS === 'true';
@@ -28,13 +27,22 @@ export const db = initializeFirestore(app, {
     ? undefined
     : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
-export const storage = getStorage(app);
+
+/** Cloud Storage is only needed for photo uploads, so its SDK is loaded on first use. */
+let storagePromise: Promise<typeof import('firebase/storage') & { storage: import('firebase/storage').FirebaseStorage }> | null = null;
+export function loadStorage() {
+  storagePromise ??= import('firebase/storage').then((mod) => {
+    const storage = mod.getStorage(app);
+    if (useEmulators) mod.connectStorageEmulator(storage, location.hostname, 9199);
+    return { ...mod, storage };
+  });
+  return storagePromise;
+}
 
 if (useEmulators) {
   const host = location.hostname;
   connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
   connectFirestoreEmulator(db, host, 8080);
-  connectStorageEmulator(storage, host, 9199);
 }
 
 export const isConfigured = useEmulators || Boolean(env.VITE_FIREBASE_API_KEY);
