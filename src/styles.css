@@ -449,7 +449,7 @@ button.vis[data-state='pending'] { opacity: 0.6; }
 /* ── recipes */
 .subnav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
 .subnav::-webkit-scrollbar { display: none; }
-.subnav a { flex: none; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line); text-decoration: none; }
+.subnav a { flex: none; padding: 6px 11px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line); text-decoration: none; }
 .subnav a.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 .stars { display: inline-flex; gap: 1px; line-height: 1; color: var(--line); }
 .stars .on { color: #f5b301; }

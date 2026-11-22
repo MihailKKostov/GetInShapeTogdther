@@ -86,18 +86,15 @@ export default function Plan() {
               {kcal > 0 && <span className="small muted">{fmtNum(kcal)} kcal</span>}
             </div>
             <div className="panel-b tight list">
-              {MEALS.map((meal) => {
-                const here = meals.filter((m) => m.meal === meal);
-                return (
-                  <div key={meal} className="li" style={{ alignItems: 'flex-start' }}>
-                    <span className="small muted" style={{ width: 70, flex: 'none', paddingTop: 2 }}>{MEAL_LABELS[meal]}</span>
-                    <div className="main col" style={{ gap: 4 }}>
-                      {here.map((m) => <PlannedRow key={m.id} m={m} r={m.recipeId ? byId.get(m.recipeId) : undefined} onEdit={() => setEditing(m)} />)}
-                      <button className="btn ghost sm" style={{ alignSelf: 'flex-start', paddingLeft: 0 }} onClick={() => setAdding({ date: d, meal })}>+ Add</button>
-                    </div>
-                  </div>
-                );
-              })}
+              {MEALS.flatMap((meal) => meals.filter((m) => m.meal === meal)).map((m) => (
+                <div key={m.id} className="li" style={{ alignItems: 'flex-start' }}>
+                  <span className="small muted" style={{ width: 62, flex: 'none', paddingTop: 2 }}>{MEAL_LABELS[m.meal]}</span>
+                  <div className="main"><PlannedRow m={m} r={m.recipeId ? byId.get(m.recipeId) : undefined} onEdit={() => setEditing(m)} /></div>
+                </div>
+              ))}
+              <div className="li" style={{ gap: 4, flexWrap: 'wrap' }}>
+                {MEALS.map((meal) => <button key={meal} className="chip" onClick={() => setAdding({ date: d, meal })}>+ {MEAL_LABELS[meal]}</button>)}
+              </div>
             </div>
           </section>
         );
