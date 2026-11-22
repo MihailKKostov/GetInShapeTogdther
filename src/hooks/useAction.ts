@@ -5,13 +5,12 @@ export type ActionState = 'idle' | 'pending' | 'done' | 'error';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Wraps an async action with explicit, visible states.
- * - pending is held for at least `minPending` ms so the input is visibly acknowledged
- * - done is held for `doneFor` ms to close the feedback loop, then returns to idle
+ * Wraps an async action with visible states: pending (spinner while work is in flight),
+ * done (brief ✓ for `doneFor` ms) or error. No artificial delay by default.
  */
 export function useAction<A extends unknown[], R>(
   fn: (...args: A) => Promise<R>,
-  { minPending = 380, doneFor = 1100 }: { minPending?: number; doneFor?: number } = {},
+  { minPending = 0, doneFor = 900 }: { minPending?: number; doneFor?: number } = {},
 ) {
   const [state, setState] = useState<ActionState>('idle');
   const [error, setError] = useState<string | null>(null);

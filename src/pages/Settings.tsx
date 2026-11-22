@@ -48,7 +48,7 @@ function ProfileSection() {
     if (reroll) data.avatarSeed = randomSeed();
     if (mode === 'photo' && !profile.photoURL) data.photoURL = user?.photoURL ?? null;
     await updateProfile(uid, data);
-  }, { minPending: 200, doneFor: 10 });
+  }, { doneFor: 10 });
 
   return (
     <Panel title="Profile">

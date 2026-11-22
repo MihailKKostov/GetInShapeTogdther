@@ -263,6 +263,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, leaving: true } : x))), ms);
     setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), ms + 170);
   }, []);
+  useEffect(() => {
+    const onFail = (e: Event) => push(`Couldn't save ${(e as CustomEvent<string>).detail}. Check your connection and try again.`, 'bad', 5000);
+    window.addEventListener('wefit:write-error', onFail);
+    return () => window.removeEventListener('wefit:write-error', onFail);
+  }, [push]);
   return (
     <ToastCtx.Provider value={push}>
       {children}

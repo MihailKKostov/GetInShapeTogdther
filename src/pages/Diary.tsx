@@ -64,7 +64,7 @@ export default function Diary() {
               key={m}
               meal={m}
               date={date}
-              entries={(day.data?.entries ?? []).filter((e) => e.meal === m)}
+              entries={(day.data?.entries ?? []).filter((e) => e.meal === m).sort((a, b) => a.addedAt - b.addedAt)}
               onAdd={() => setAdding(m)}
               onEdit={setEditing}
               locked={closed}
@@ -186,7 +186,7 @@ function EntryEditor({ date, entry, onClose }: { date: string; entry: FoodEntry;
   const per100 = scaleNutrients(entry.n, entry.grams ? (100 * 100) / entry.grams : 100);
   const n = entry.source === 'quick' ? entry.n : scaleNutrients(per100, Number(grams) || 0);
   const save = useAction(async () => {
-    await replaceFoodEntry(uid, date, { ...entry, grams: Number(grams) || 0, n });
+    await replaceFoodEntry(uid, date, entry, { ...entry, grams: Number(grams) || 0, n });
     return true;
   });
   const del = useAction(async () => { await removeFoodEntry(uid, date, entry); return true; });
@@ -268,7 +268,7 @@ function CompletePanel({ date, day, totals, budget, onTarget }: { date: string; 
     const r = await closeDay(uid, date, settings, day, { share, note: note.trim() });
     setStreak(r.streak);
     toast(r.onTarget ? `On target! Streak: ${r.streak} day${r.streak === 1 ? '' : 's'} 🔥` : 'Day completed', r.onTarget ? 'ok' : 'info');
-  }, { minPending: 600 });
+  });
   const reopen = useAction(async () => { await reopenDay(uid, date); setStreak(null); });
 
   if (day?.closed) {

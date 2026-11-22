@@ -83,7 +83,7 @@ function SearchTab({ onPick }: { onPick: (f: Food) => void }) {
         .then((r) => setRemote(r))
         .catch((e) => { if (e.name !== 'AbortError') setErr('Food database unreachable — try again or use quick add'); })
         .finally(() => !ctl.signal.aborted && setLoading(false));
-    }, 450);
+    }, 300);
     return () => { clearTimeout(t); ctl.abort(); };
   }, [term]);
 
