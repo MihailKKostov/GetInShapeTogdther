@@ -9,6 +9,7 @@ import { toLocalInput } from '../lib/dates';
 import { encodeRoute, type GeoPoint } from '../lib/geo';
 import { ACTIVITY_TYPES, estimateKcal } from '../lib/nutrition';
 import { distUnit, fmtNum, kgTo, mTo, toKg, toM, weightUnit } from '../lib/units';
+import { EmojiField } from './EmojiText';
 import { RouteTrace } from './RouteTrace';
 import { ActionButton, ErrorLine, Icon, Modal, NumInput, Seg, Toggle, UploadProgress, useToast } from './ui';
 
@@ -112,7 +113,7 @@ export function ActivityForm({ draft, onClose, onSaved }: { draft?: ActivityDraf
         </label>
       </div>
       {(type === 'strength' || type === 'hiit') && <ExerciseEditor rows={exercises} onChange={setExercises} />}
-      <label className="f"><span>Notes</span><textarea value={notes} maxLength={1000} placeholder="How did it feel?" onChange={(e) => setNotes(e.target.value)} /></label>
+      <label className="f"><span>Notes</span><EmojiField multiline value={notes} maxLength={1000} placeholder="How did it feel?" onChange={setNotes} /></label>
       <div className="col" style={{ background: 'var(--soft)', borderRadius: 10, padding: 12, gap: 12 }}>
         <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '👥 Friends can see' }, { v: 'private', l: '🔒 Only me' }]} />
         {vis === 'friends' && <Toggle on={share} onChange={setShare} label="Post to feed" />}

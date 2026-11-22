@@ -43,7 +43,7 @@ export function EmojiPicker({
     return () => { document.removeEventListener('mousedown', down); window.removeEventListener('keydown', key); };
   }, [anchor, onClose]);
 
-  const term = q.trim().toLowerCase();
+  const term = q.trim().toLowerCase().replace(/:/g, '');
   const custom = [...emojis.values()].filter((e) => !term || e.name.includes(term));
   const sections: { id: string; items: ReactNode[] }[] = [];
   const btn = (k: string, title: string, inner: ReactNode) => (
@@ -59,10 +59,10 @@ export function EmojiPicker({
   }
   if (term) {
     const hits = ALL_STD.filter((e) => e.n.includes(term));
-    sections.push({ id: 'results', items: hits.map((e) => btn(e.c, e.n, <span className="emoji-char">{e.c}</span>)) });
+    sections.push({ id: 'results', items: hits.map((e) => btn(e.c, `:${e.code}:`, <span className="emoji-char">{e.c}</span>)) });
   } else {
     for (const g of EMOJI_GROUPS) {
-      sections.push({ id: g.id, items: g.items.map((e) => btn(e.c, e.n, <span className="emoji-char">{e.c}</span>)) });
+      sections.push({ id: g.id, items: g.items.map((e) => btn(e.c, `:${e.code}:`, <span className="emoji-char">{e.c}</span>)) });
     }
   }
 
@@ -70,7 +70,7 @@ export function EmojiPicker({
     <div className="popover" style={pos} ref={ref}>
       <div className="picker" role="dialog" aria-label="Pick emoji">
         <div style={{ padding: 8, borderBottom: '1px solid var(--line)' }}>
-          <input autoFocus placeholder="Search emoji" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input autoFocus placeholder="Search, e.g. :fire:" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="picker-grid">
           {sections.map((s) => (

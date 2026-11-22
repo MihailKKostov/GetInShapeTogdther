@@ -5,6 +5,7 @@ import { activitiesCol, deleteActivity, updateActivityMeta } from '../data/api';
 import type { Activity, Visibility } from '../data/types';
 import { ActivityForm, type ActivityDraft } from '../components/ActivityForm';
 import { BarChart } from '../components/Charts';
+import { EmojiField, EmojiText } from '../components/EmojiText';
 import { ExerciseTable } from '../components/PostCard';
 import { RouteTrace } from '../components/RouteTrace';
 import {
@@ -152,7 +153,7 @@ export function ActivityDetail({ a, onClose, editable }: { a: Activity; onClose:
       {a.exercises?.length > 0 && <ExerciseTable rows={a.exercises} />}
       {editable ? (
         <>
-          <label className="f"><span>Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+          <label className="f"><span>Notes</span><EmojiField multiline value={notes} onChange={setNotes} /></label>
           <Seg<Visibility> value={vis} onChange={setVis} options={[{ v: 'friends', l: '👥 Friends' }, { v: 'private', l: '🔒 Only me' }]} />
           <ErrorLine>{save.error || del.error}</ErrorLine>
           <div className="row">
@@ -163,7 +164,7 @@ export function ActivityDetail({ a, onClose, editable }: { a: Activity; onClose:
             <ActionButton variant="primary" state={save.state} onClick={() => save.run()} doneLabel="Saved">Save</ActionButton>
           </div>
         </>
-      ) : a.notes ? <p className="post-text">{a.notes}</p> : null}
+      ) : a.notes ? <p className="post-text"><EmojiText text={a.notes} /></p> : null}
     </Modal>
   );
 }
