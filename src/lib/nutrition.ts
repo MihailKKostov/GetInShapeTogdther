@@ -23,13 +23,37 @@ export function tdee(s: PrivateSettings, weightKg: number): number {
 }
 
 /** ~7700 kcal per kg of body weight. */
-export function suggestedCalories(s: PrivateSettings, weightKg: number): number {
+/**
+ * Commonly cited minimum daily intake without medical supervision
+ * (e.g. Harvard Health / NIH guidance): about 1,500 kcal for men and 1,200 kcal for women.
+ */
+export function minDailyCalories(sex: PrivateSettings['sex']): number {
+  return sex === 'male' ? 1500 : 1200;
+}
+
+const KCAL_PER_KG = 7700;
+
+/** Daily calories for the chosen goal and pace, before applying the minimum. */
+export function rawCalorieTarget(s: PrivateSettings, weightKg: number): number {
   const t = tdee(s, weightKg);
-  const daily = (s.weeklyRateKg * 7700) / 7;
-  let goal = s.goalType === 'lose' ? t - daily : s.goalType === 'gain' ? t + daily : t;
-  const floor = s.sex === 'male' ? 1500 : 1200;
-  goal = Math.max(floor, goal);
+  const daily = (s.weeklyRateKg * KCAL_PER_KG) / 7;
+  return s.goalType === 'lose' ? t - daily : s.goalType === 'gain' ? t + daily : t;
+}
+
+export function suggestedCalories(s: PrivateSettings, weightKg: number): number {
+  const goal = Math.max(minDailyCalories(s.sex), rawCalorieTarget(s, weightKg));
   return Math.round(goal / 10) * 10;
+}
+
+/** Fastest offered loss pace that keeps the target at or above the daily minimum (null if none does). */
+export function maxSafeLossRate(s: PrivateSettings, weightKg: number): number | null {
+  const ok = RATE_OPTIONS.filter((r) => rawCalorieTarget({ ...s, goalType: 'lose', weeklyRateKg: r }, weightKg) >= minDailyCalories(s.sex));
+  return ok.length ? ok[ok.length - 1] : null;
+}
+
+/** Weekly change you'd actually see at a given daily intake (kg/week, positive = loss). */
+export function weeklyLossAt(s: PrivateSettings, weightKg: number, kcalPerDay: number): number {
+  return ((tdee(s, weightKg) - kcalPerDay) * 7) / KCAL_PER_KG;
 }
 
 /** Weekly rates offered for losing or gaining weight, in kg per week. */
