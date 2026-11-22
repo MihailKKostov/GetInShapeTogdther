@@ -9,7 +9,7 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 | Area | What's there |
 | --- | --- |
 | **AI estimates** | *Add food → AI estimate*: take a photo, or describe what you ate in your own words ("2 eggs with butter and a flat white"), and OpenAI estimates each food, its portion and nutrition. You review and edit the items before adding them. Each person adds their own OpenAI API key in *Settings → AI food estimates*; it's stored only in that browser and sent straight to OpenAI, never to WeFit's servers. |
-| **Recipe import** | Paste a recipe link in *Add food → Recipe*. A Cloud Function reads the page's schema.org recipe data (name, servings, ingredients, nutrition per serving), you review it, and it's saved to *My foods* to log by the serving. Sites that block automated reading or don't list nutrition fall back to entering the values by hand. |
+| **Recipe import** | Paste a recipe link in *Recipes → Import*. A Cloud Function reads the page's schema.org recipe data (name, servings, ingredients, nutrition per serving), you review it, and it's saved to *My foods* to log by the serving. Sites that block automated reading or don't list nutrition fall back to entering the values by hand. |
 | **Food log** (`/log`) | Search reference whole foods plus [Open Food Facts](https://world.openfoodfacts.org) (packaged foods, no API key needed). Barcode scan where the browser supports `BarcodeDetector`. Custom foods, recent foods, quick add, copy a meal from yesterday. Per-day energy budget (goal + exercise), macros, fiber, sodium, water, weigh-in. |
 | **Completing a day** | "Mark day as complete" locks the day and checks it against your "on target" band (default: up to 15 % under / 5 % over budget). That updates your streak and can post a summary to the feed (kcal, macros, streak — never the food list). |
 | **Activities** (`/move`) | Manual log (run, ride, walk, hike, swim, row, strength with sets×reps×load, HIIT, yoga, sport). In-browser GPS recording with a wake lock and crash recovery. GPX import. Pace, speed and elevation. Calorie estimate from MET values. Routes are drawn as schematic traces, not on map tiles. |
@@ -20,6 +20,24 @@ Built with React, TypeScript and Vite on Firebase (Auth, Firestore, Storage, Hos
 | **Feed** | Posts from you and your friends only. Filters: all / friends / me / progress. |
 | **Reactions & emoji** | Any number of emojis per post, toggled on and off. Custom emojis work like Slack's: upload an image or make a text sticker. Emojis can be typed Slack-style anywhere you write text (posts, status, notes): `:fi` opens suggestions, and a full `:fire:` turns into 🔥. Custom emojis are written as `:name:` and shown as images. |
 | **Profile basics** | Optional nickname (defaults to your name), Google photo / uploaded photo / initials avatar, and a status of up to 80 characters. |
+
+### Recipes (ported from RecipeMan)
+
+The **Recipes** tab brings in everything from the RecipeMan Android app:
+
+| Area | What's there |
+| --- | --- |
+| **Library** | Search names and ingredients, categories, favorites, 5-star ratings, sorting (name, rating, recently added, recently cooked), grid or list view, random recipe. |
+| **Cooking** | Photos, scaling (½×–3× or any number of servings, with fractions like ½ and ⅔), metric/US unit conversion, tap ingredients to cross them off, tap a step to mark your place. Times in directions ("bake 25–30 minutes") become timers that keep running across screens and ring with sound, vibration and a notification. The screen stays on while cooking, and you can mark a recipe as cooked, share it as text or open the original page. |
+| **Import** | Paste a link (or on Android use *Share → WeFit* once it's on your home screen). The `importRecipe` function reads schema.org JSON-LD, then microdata, then page heuristics, and you review before saving. You can also import a Paprika export (`.paprikarecipes`) with photos, ratings, categories, nutrition and dates; recipes you already have are skipped. |
+| **Meal plan** | Week view with breakfast, lunch, dinner and snack. Send a week's ingredients to the grocery list, skipping pantry items. |
+| **Menus** | Reusable groups of meals you add to the plan in one go. |
+| **Groceries** | Multiple lists grouped by aisle (guessed automatically) or by recipe. Matching quantities are combined ("1 cup flour" + "2 cups flour" = "3 cups flour"). Share a list, or move bought items to the pantry. |
+| **Pantry** | Quantities, purchase and expiry dates, expiring-soon warnings. Ingredients you already have start unticked when you add a recipe to the grocery list. |
+| **Logging meals** | Recipes carry **nutrition per serving**: imported from the page, read from Paprika's nutrition text, typed in, or estimated with AI from the ingredients. Ways to log: *Log to diary* from a recipe, *Add food → Recipe* in the diary, a one-tap *Log* on planned meals (shown in the diary and the plan), or **Auto-log planned meals**, which logs planned recipes once their meal time passes (breakfast 10:00, lunch 14:00, snack 17:00, dinner 20:00). Auto-log catches up on the last 7 days, skips days you've completed, and can't double-log from two devices. |
+| **Sharing** | *Share* posts a recipe to the friends feed. Friends can open the full recipe, react, and *Save to my recipes*. |
+
+Recipes, grocery lists, the meal plan, pantry and menus are private to you; only recipes you share are visible to friends.
 
 ### What friends can see
 

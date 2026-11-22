@@ -325,6 +325,7 @@ export interface NewPost {
   weightKg?: number;
   activity?: Post['activity'];
   day?: Post['day'];
+  recipe?: Post['recipe'];
 }
 
 export async function createPost(uid: string, p: NewPost): Promise<string> {
@@ -339,6 +340,7 @@ export async function createPost(uid: string, p: NewPost): Promise<string> {
     weightKg: p.weightKg,
     activity: p.activity,
     day: p.day,
+    recipe: p.recipe,
     createdAt: serverTimestamp(),
   }), 'your post');
   return ref.id;

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { doc, query } from 'firebase/firestore';
-import { addFoodEntry, deleteCustomFood, foodsCol, recentsRef, recipeImportsCol, requestRecipeImport, saveCustomFood } from '../data/api';
-import type { Food, FoodEntry, Meal, Nutrients, RecipeImport } from '../data/types';
+import { query } from 'firebase/firestore';
+import { addFoodEntry, deleteCustomFood, foodsCol, recentsRef, saveCustomFood } from '../data/api';
+import { recipeFood, recipesCol } from '../data/recipes';
+import { Link } from 'react-router-dom';
+import type { Food, FoodEntry, Meal, Nutrients, Recipe } from '../data/types';
 import { useAction } from '../hooks/useAction';
 import { useDoc, useQuery } from '../hooks/useFirestore';
 import { useMe } from '../hooks/useSession';
@@ -286,122 +288,32 @@ function ScanTab({ onPick }: { onPick: (f: Food) => void }) {
   );
 }
 
-/** Import a recipe from a link (via the importRecipe Cloud Function), review it, save it as one of "My foods". */
+/** Pick one of your recipes (from the Recipes tab) and log it by the serving. */
 function RecipeTab({ onPick }: { onPick: (f: Food) => void }) {
   const { uid } = useMe();
-  const [url, setUrl] = useState('');
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [manual, setManual] = useState(false);
-  const [slow, setSlow] = useState(false);
-  const job = useDoc<RecipeImport>(jobId ? doc(recipeImportsCol(uid), jobId) : null, `ri:${jobId}`);
-  const status = job.data?.status ?? (jobId ? 'pending' : null);
-
-  useEffect(() => {
-    setSlow(false);
-    if (status !== 'pending') return;
-    const t = setTimeout(() => setSlow(true), 25000);
-    return () => clearTimeout(t);
-  }, [status, jobId]);
-
-  const start = () => {
-    let u = url.trim();
-    if (!u) return;
-    if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
-    setManual(false);
-    setJobId(requestRecipeImport(uid, u));
-  };
-
-  if (status === 'done' && job.data?.recipe) {
-    return <RecipeForm key={jobId} recipe={job.data.recipe} onBack={() => setJobId(null)} onSaved={onPick} />;
-  }
-  if (manual) {
-    return <RecipeForm recipe={{ name: '', servings: 4, yieldLabel: null, image: null, url: url.trim(), ingredients: [], nutrition: null }} onBack={() => setManual(false)} onSaved={onPick} />;
-  }
+  const recipes = useQuery<Recipe>(query(recipesCol(uid)), `recipes:${uid}`);
+  const [q, setQ] = useState('');
+  const shown = recipes.data.filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => Number(!!b.perServing) - Number(!!a.perServing) || a.name.localeCompare(b.name));
   return (
     <div className="col">
-      <p className="small muted" style={{ margin: 0 }}>
-        Paste a link to a recipe. We'll read its name, servings, ingredients and (when the site lists it) nutrition per serving.
-      </p>
-      <div className="row">
-        <input
-          type="url" inputMode="url" autoFocus placeholder="https://…/my-favourite-recipe" value={url}
-          onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && start()}
-          disabled={status === 'pending'}
-        />
-        <button className="btn primary" onClick={start} disabled={!url.trim() || status === 'pending'}>
-          {status === 'pending' ? <><Spinner /> Reading…</> : 'Import'}
-        </button>
-      </div>
-      {status === 'pending' && (
-        <div className="small muted row"><Spinner /> {slow ? 'Still working… If this never finishes, recipe import may not be set up yet.' : 'Reading the recipe page…'}</div>
-      )}
-      {status === 'error' && <ErrorLine>{job.data?.error ?? 'Could not import that recipe'}</ErrorLine>}
-      {(status === 'error' || slow) && (
-        <button className="btn soft" onClick={() => setManual(true)}>Enter the recipe's nutrition manually</button>
-      )}
-    </div>
-  );
-}
-
-function RecipeForm({ recipe, onBack, onSaved }: { recipe: NonNullable<RecipeImport['recipe']>; onBack: () => void; onSaved: (f: Food) => void }) {
-  const { uid } = useMe();
-  const toast = useToast();
-  const n = recipe.nutrition ?? {};
-  const [name, setName] = useState(recipe.name);
-  const [servings, setServings] = useState<number | ''>(recipe.servings ?? 4);
-  const [vals, setVals] = useState<Partial<Record<keyof Nutrients, number | ''>>>({
-    kcal: n.kcal ?? '', protein: n.protein ?? '', carbs: n.carbs ?? '', fat: n.fat ?? '',
-    fiber: n.fiber ?? '', sugar: n.sugar ?? '', satFat: n.satFat ?? '', sodiumMg: n.sodiumMg ?? '',
-  });
-  const [showIngr, setShowIngr] = useState(false);
-  const hasNutrition = recipe.nutrition?.kcal != null;
-  const save = useAction(async () => {
-    if (!name.trim()) throw new Error('Give the recipe a name');
-    if (vals.kcal === '' || vals.kcal == null) throw new Error('Enter calories per serving');
-    const per: Nutrients = { kcal: Math.round(Number(vals.kcal)), protein: Number(vals.protein) || 0, carbs: Number(vals.carbs) || 0, fat: Number(vals.fat) || 0 };
-    for (const k of ['fiber', 'sugar', 'satFat', 'sodiumMg'] as const) if (vals[k] !== '' && vals[k] != null) per[k] = Number(vals[k]);
-    const food: Food = {
-      id: randomId(12), source: 'recipe', name: name.trim(), per100: per, servingG: 100, perServing: true,
-      servingLabel: recipe.nutrition?.servingSize || 'serving', recipeUrl: recipe.url || undefined,
-      brand: servings ? `Recipe · serves ${servings}` : 'Recipe',
-    };
-    await saveCustomFood(uid, food);
-    toast('Recipe saved to My foods');
-    return food;
-  });
-  return (
-    <div className="col">
-      {recipe.image && <img src={recipe.image} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10 }} referrerPolicy="no-referrer" />}
-      <label className="f"><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recipe name" /></label>
-      <label className="f"><span>Servings the recipe makes</span><NumInput value={servings} onChange={setServings} /></label>
-      {hasNutrition
-        ? <p className="small muted" style={{ margin: 0 }}>Nutrition per serving, as listed by the recipe site. You can adjust it.</p>
-        : <div className="warn-box">This page doesn't list nutrition. Enter values per serving (for example from the recipe's own notes or an estimate).</div>}
-      <div className="fgrid">
-        {(['kcal', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'satFat', 'sodiumMg'] as (keyof Nutrients)[]).map((k) => (
-          <label key={k} className="f">
-            <span>{NUTRIENT_LABELS[k].label}{k === 'kcal' ? ' *' : ''}</span>
-            <NumInput value={vals[k] ?? ''} onChange={(v) => setVals((s) => ({ ...s, [k]: v }))} unit={NUTRIENT_LABELS[k].unit} />
-          </label>
-        ))}
-      </div>
-      {recipe.ingredients.length > 0 && (
-        <div>
-          <button className="btn ghost sm" style={{ paddingLeft: 0 }} onClick={() => setShowIngr((x) => !x)}>
-            {showIngr ? 'Hide' : 'Show'} {recipe.ingredients.length} ingredients
-          </button>
-          {showIngr && <ul className="small" style={{ margin: '4px 0 0', paddingLeft: 18 }}>{recipe.ingredients.map((i, k) => <li key={k}>{i}</li>)}</ul>}
+      <input type="search" autoFocus placeholder="Search your recipes" value={q} onChange={(e) => setQ(e.target.value)} />
+      {recipes.loading ? <Skeleton h={120} /> : recipes.data.length === 0 ? (
+        <Empty icon="📖" title="No recipes yet">Add or import recipes in the Recipes tab, then log them here by the serving.</Empty>
+      ) : (
+        <div className="panel list">
+          {shown.map((r) => r.perServing ? (
+            <button key={r.id} type="button" className="li" onClick={() => onPick(recipeFood(r))}>
+              <div className="main"><div className="name"><span className="src my">RECIPE</span>{r.name}</div><div className="sub">{r.servings || 'per serving'}</div></div>
+              <div className="end"><b>{fmtNum(r.perServing.kcal)}</b> <span className="small muted">kcal</span><div className="small muted">per serving</div></div>
+            </button>
+          ) : (
+            <Link key={r.id} className="li" to={`/recipes/${r.id}`}>
+              <div className="main"><div className="name">{r.name}</div><div className="sub warn">Add nutrition per serving to log it</div></div>
+            </Link>
+          ))}
         </div>
       )}
-      {recipe.url && <a className="small" href={recipe.url} target="_blank" rel="noreferrer noopener">Open recipe page ↗</a>}
-      <ErrorLine>{save.error}</ErrorLine>
-      <div className="row">
-        <button className="btn" onClick={onBack}>Back</button>
-        <span className="grow" />
-        <ActionButton variant="primary" state={save.state} onClick={async () => { const f = await save.run(); if (f) onSaved(f); }}>
-          Save & choose servings
-        </ActionButton>
-      </div>
+      <Link className="btn soft" to="/recipes/import">Import a recipe from a link or Paprika</Link>
     </div>
   );
 }

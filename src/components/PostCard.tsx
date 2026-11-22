@@ -9,6 +9,7 @@ import { ACTIVITY_TYPES } from '../lib/nutrition';
 import { fmtDist, fmtElev, fmtNum, fmtPace, fmtSpeed, fmtWeight } from '../lib/units';
 import { EmojiField, EmojiText } from './EmojiText';
 import { Reactions } from './Reactions';
+import { RecipePostBlock } from '../pages/recipes/RecipePost';
 import { RouteTrace } from './RouteTrace';
 import { ActionButton, Avatar, Icon, Lightbox, Meter, useToast } from './ui';
 
@@ -18,6 +19,7 @@ function action(post: Post, mine: boolean): string {
     case 'day': return post.day?.onTarget ? `hit ${their} nutrition target` : `completed ${their} food diary`;
     case 'activity': return `logged a ${ACTIVITY_TYPES[post.activity?.type ?? 'other'].label.toLowerCase()}`;
     case 'photo': return post.progress ? 'shared a progress photo' : 'shared a photo';
+    case 'recipe': return 'shared a recipe';
     default: return 'posted an update';
   }
 }
@@ -83,6 +85,7 @@ export function PostCard({ post, author, names, isNew }: {
         ) : null}
         {post.kind === 'day' && post.day && <DayBlock d={post.day} />}
         {post.kind === 'activity' && post.activity && <ActivityBlock a={post.activity} />}
+        {post.kind === 'recipe' && post.recipe && <RecipePostBlock post={post} authorName={displayName(author)} />}
         {post.weightKg != null && <WeightTag kg={post.weightKg} />}
         {post.photos.length > 0 && (
           <div className={`photos n${Math.min(post.photos.length, 4)}`}>

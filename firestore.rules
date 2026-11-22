@@ -88,6 +88,13 @@ service cloud.firestore {
         allow write: if isMe(uid);
       }
 
+      // RecipeMan data: recipes, grocery lists, meal plan, pantry and menus are private to the owner.
+      // (Recipes are shared with friends by posting a copy to the feed.)
+      match /{collection}/{docId} {
+        allow read, write: if isMe(uid)
+          && collection in ['recipes', 'groceryLists', 'groceryItems', 'mealPlan', 'pantry', 'menus'];
+      }
+
       match /friends/{friendId} {
         allow read: if isMe(uid) || isMe(friendId);
         // A friendship is created as two mirrored docs by the person accepting an invite.
@@ -126,7 +133,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.visibility in ['friends', 'private']
-        && request.resource.data.kind in ['status', 'photo', 'activity', 'day']
+        && request.resource.data.kind in ['status', 'photo', 'activity', 'day', 'recipe']
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 1000;
       allow update: if isMe(resource.data.authorId)

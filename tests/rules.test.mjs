@@ -176,6 +176,27 @@ describe('shared vs private data', () => {
   });
 });
 
+describe('recipes, grocery, meal plan, pantry, menus', () => {
+  test('private to the owner — friends cannot read or write', async () => {
+    await seedUsers();
+    for (const col of ['recipes', 'groceryLists', 'groceryItems', 'mealPlan', 'pantry', 'menus']) {
+      await assertSucceeds(setDoc(doc(db('alice'), `users/alice/${col}/x1`), { name: 'mine' }));
+      await assertSucceeds(getDoc(doc(db('alice'), `users/alice/${col}/x1`)));
+      await assertFails(getDoc(doc(db('bob'), `users/alice/${col}/x1`)));
+      await assertFails(setDoc(doc(db('bob'), `users/alice/${col}/x2`), { name: 'not yours' }));
+    }
+    await assertFails(setDoc(doc(db('alice'), 'users/alice/somethingElse/x1'), { a: 1 }));
+  });
+  test('recipes can be shared as posts', async () => {
+    await seedUsers();
+    await assertSucceeds(setDoc(doc(db('alice'), 'posts/r1'), {
+      authorId: 'alice', kind: 'recipe', visibility: 'friends', text: 'try this', recipe: { name: 'Soup', ingredients: '1 onion' }, createdAt: Timestamp.now(),
+    }));
+    await assertSucceeds(getDoc(doc(db('bob'), 'posts/r1')));
+    await assertFails(getDoc(doc(db('eve'), 'posts/r1')));
+  });
+});
+
 describe('recipe imports', () => {
   test('owner creates a pending request; nobody can forge a result', async () => {
     await seedUsers();

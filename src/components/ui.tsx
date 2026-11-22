@@ -25,6 +25,7 @@ const PATHS: Record<string, string> = {
   edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
   smile: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2M9 9.5h.01M15 9.5h.01',
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
+  recipes: 'M6 3h12v18l-6-4-6 4zM9 8h6M9 12h4',
 };
 
 export function Icon({ name, size = 22, stroke = 1.9 }: { name: keyof typeof PATHS | string; size?: number; stroke?: number }) {
