@@ -22,9 +22,10 @@ export default function Setup() {
     const final: PrivateSettings = { ...s, startWeightKg: s.startWeightKg || currentKg, setupComplete: true };
     if (final.calorieGoalAuto) final.calorieGoal = suggestedCalories(final, currentKg);
     if (final.macroPct.protein + final.macroPct.carbs + final.macroPct.fat !== 100) throw new Error('Macro split must total 100%');
+    // Save everything else first: the settings doc flips setupComplete, which leaves this screen.
     await updateProfile(uid, { nickname: nick.trim().slice(0, 30) });
-    await saveSettings(uid, final);
     await logWeight(uid, dateKey(), currentKg);
+    await saveSettings(uid, final);
   }, { minPending: 700 });
 
   return (

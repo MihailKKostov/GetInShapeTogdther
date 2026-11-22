@@ -122,7 +122,9 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
       <Panel title="Body & goals" right={self ? <span className="muted small">Tap a badge to change</span> : undefined}>
         <div className="stats c3 m2">
           {cell('currentWeight', 'Current', fmtWeight(units, body.current), body.current == null ? 'No weigh-in yet' : undefined)}
-          {cell('targetWeight', 'Goal', fmtWeight(units, body.target), toGo != null ? `${fmtWeight(units, toGo, true)} to go` : undefined)}
+          {cell('targetWeight', 'Goal', fmtWeight(units, body.target), toGo != null
+            ? `${fmtWeight(units, toGo, true)} to go${self && settings.targetDate ? ` · by ${fmtShort(parseKey(settings.targetDate))}` : ''}`
+            : undefined)}
           {cell('startWeight', 'Start', fmtWeight(units, body.start))}
           {cell('weightChange', 'Change', fmtWeight(units, body.change, true), 'Since start')}
           {cell('height', 'Height', fmtHeight(units, body.height))}
