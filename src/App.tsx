@@ -21,7 +21,7 @@ function Boot({ label }: { label: string }) {
   return (
     <div className="login">
       <div className="col" style={{ alignItems: 'center', gap: 16 }}>
-        <span className="logo"><img src="/favicon.svg" alt="" />GIST</span>
+        <span className="logo"><img src="/favicon.svg" alt="" />WeFit</span>
         <span className="row muted small"><Spinner /> {label}</span>
       </div>
     </div>

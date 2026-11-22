@@ -37,7 +37,7 @@ export default function Invite() {
           <Avatar p={{ uid: inv.createdBy, photoURL: inv.inviterPhoto, avatarMode: inv.inviterPhoto ? 'photo' : 'generated', avatarSeed: inv.inviterSeed, displayName: inv.inviterName }} size={84} />
           <div>
             <h1>{inv.inviterName}</h1>
-            <div className="muted">invited you to get in shape together</div>
+            <div className="muted">invited you to join WeFit</div>
           </div>
           <p className="small muted" style={{ maxWidth: 420 }}>
             Friends see each other's posts and streaks. Your weight and food stay private unless you choose to share them.
