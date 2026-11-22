@@ -32,6 +32,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - name: Install Cloud Functions dependencies (the recipe page reader tests use them)
+        run: npm ci --prefix functions
       - run: npm run typecheck
       - run: npm run build
       - name: Recipe import unit tests
