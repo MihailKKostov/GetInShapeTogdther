@@ -73,7 +73,9 @@ export default function RecipeDetail() {
             <Stars value={recipe.rating ?? 0} onChange={(v) => updateRecipe(uid, recipe.id, { rating: v })} size={22} />
             <span className="small muted">{recipe.lastCookedAt ? `Cooked ${relTime(new Date(recipe.lastCookedAt))}` : 'Not cooked yet'}</span>
           </div>
-          {recipe.sharedFrom && <div className="small muted">Saved from {recipe.sharedFrom.name}'s post</div>}
+          {recipe.sharedFrom && (
+            <div className="small muted">Saved from <Link to={`/u/${recipe.sharedFrom.uid}`}>{recipe.sharedFrom.name}</Link>'s {recipe.sharedFrom.postId ? 'post' : 'recipes'}</div>
+          )}
         </div>
       }>
         <div className="col" style={{ gap: 8 }}>

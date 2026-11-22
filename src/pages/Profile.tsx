@@ -20,6 +20,7 @@ import { usePosts } from '../hooks/useSocial';
 import { addDays, dateKey, fmtDuration, fmtShort, parseKey, relTime } from '../lib/dates';
 import { fmtDist, fmtHeight, fmtNum, fmtWeight, kgTo, weightUnit } from '../lib/units';
 import { ActivityDetail, ActivityList, weeklyMinutes } from './Activities';
+import { ProfileRecipes } from './recipes/ProfileRecipes';
 
 export default function Profile() {
   const params = useParams();
@@ -68,7 +69,7 @@ function useShareToggle(p: UserProfile, self: boolean) {
 const LABELS: Record<ShareKey, string> = {
   currentWeight: 'Current weight', targetWeight: 'Target weight', startWeight: 'Start weight',
   weightChange: 'Weight change', weightHistory: 'Weight history', height: 'Height',
-  calorieGoal: 'Calorie goal', diary: 'Food log', activities: 'Activities',
+  calorieGoal: 'Calorie goal', diary: 'Food log', activities: 'Activities', recipes: 'Recipe book',
 };
 
 function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
@@ -78,6 +79,7 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
   const canWeights = self || sharing.weightHistory;
   const canDiary = self || sharing.diary;
   const canActs = self || sharing.activities;
+  const canRecipes = self || sharing.recipes;
 
   const weights = useQuery<WeightEntry>(
     canWeights ? query(weightsCol(p.uid), orderBy('date', 'desc'), limit(400)) : null,
@@ -146,6 +148,10 @@ function ProfileView({ p, self }: { p: UserProfile; self: boolean }) {
 
       <Panel title="Exercise" tight right={self ? badge('activities') : undefined}>
         {!canActs ? <PrivateNote what="exercise history" /> : <ActivitySection uid={p.uid} self={self} />}
+      </Panel>
+
+      <Panel title="Recipes" tight right={self ? badge('recipes') : undefined}>
+        {!canRecipes ? <PrivateNote what="recipe book" /> : <ProfileRecipes uid={p.uid} name={displayName(p)} self={self} />}
       </Panel>
 
       <ProgressPhotos uid={p.uid} />

@@ -93,8 +93,8 @@ export function markCooked(uid: string, id: string) {
   updateRecipe(uid, id, { lastCookedAt: Date.now() });
 }
 
-/** Copy a friend's shared recipe into your own library. */
-export function saveSharedRecipe(uid: string, snap: RecipeSnapshot, from: { uid: string; name: string; postId: string }): string {
+/** Copy a friend's recipe (from a post or their recipe book) into your own library. Their rating, favourite and cooking history stay theirs. */
+export function saveSharedRecipe(uid: string, snap: RecipeSnapshot, from: { uid: string; name: string; postId?: string; recipeId?: string }): string {
   return saveRecipe(uid, null, { ...snapshotOf(snap), sharedFrom: from });
 }
 

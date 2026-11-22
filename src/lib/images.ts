@@ -75,3 +75,13 @@ export async function textEmoji(text: string, bg: string, fg: string, size = 128
   lines.forEach((l, i) => ctx.fillText(l, size / 2, size / 2 + (i - (lines.length - 1) / 2) * lh));
   return { blob: await canvasToBlob(c, 'image/png', 1), w: size, h: size, type: 'image/png' };
 }
+
+/** Read a blob as a data: URL (for sending a photo inline to an API). */
+export function blobToDataUrl(b: Blob): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(new Error('Could not read the photo'));
+    r.readAsDataURL(b);
+  });
+}

@@ -6,7 +6,7 @@ import { useObjectUrls } from '../hooks/useObjectUrls';
 import { useMe } from '../hooks/useSession';
 import { randomId } from '../lib/avatar';
 import { aiSettings, analyzeFoodPhoto, analyzeFoodText, type PhotoItem } from '../lib/foodPhoto';
-import { resizeImage } from '../lib/images';
+import { blobToDataUrl, resizeImage } from '../lib/images';
 import { fmtNum } from '../lib/units';
 import { Empty, ErrorLine, Icon, NumInput, Seg, Spinner, useToast } from './ui';
 
@@ -20,15 +20,6 @@ export function useAiSettings() {
     return () => { window.removeEventListener('wefit:ai-settings', on); window.removeEventListener('storage', on); };
   }, []);
   return { key: aiSettings.getKey(), model: aiSettings.getModel() };
-}
-
-function blobToDataUrl(b: Blob): Promise<string> {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result));
-    r.onerror = () => rej(new Error('Could not read the photo'));
-    r.readAsDataURL(b);
-  });
 }
 
 interface Row extends PhotoItem { id: string; on: boolean; origGrams: number }

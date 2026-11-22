@@ -29,15 +29,16 @@ The **Recipes** tab brings in everything from the RecipeMan Android app:
 | --- | --- |
 | **Library** | Search names and ingredients, categories, favorites, 5-star ratings, sorting (name, rating, recently added, recently cooked), grid or list view, random recipe. |
 | **Cooking** | Photos, scaling (½×–3× or any number of servings, with fractions like ½ and ⅔), metric/US unit conversion, tap ingredients to cross them off, tap a step to mark your place. Times in directions ("bake 25–30 minutes") become timers that keep running across screens and ring with sound, vibration and a notification. The screen stays on while cooking, and you can mark a recipe as cooked, share it as text or open the original page. |
+| **From a photo** | Photograph a dish and AI writes a recipe that would make it, or photograph a written recipe (cookbook page, card, screenshot; up to 4 pages) and it's transcribed. Ingredients with amounts, steps, times and estimated nutrition per serving open in the editor to adjust before saving. Uses your own OpenAI key (Settings → AI food estimates); a dish photo becomes the recipe photo. |
 | **Import** | Paste a link (or on Android use *Share → WeFit* once it's on your home screen). The `importRecipe` function reads schema.org JSON-LD, then microdata, then page heuristics, and you review before saving. You can also import a Paprika export (`.paprikarecipes`) with photos, ratings, categories, nutrition and dates; recipes you already have are skipped. |
 | **Meal plan** | Week view with breakfast, lunch, dinner and snack. Send a week's ingredients to the grocery list, skipping pantry items. |
 | **Menus** | Reusable groups of meals you add to the plan in one go. |
 | **Groceries** | Multiple lists grouped by aisle (guessed automatically) or by recipe. Matching quantities are combined ("1 cup flour" + "2 cups flour" = "3 cups flour"). Share a list, or move bought items to the pantry. |
 | **Pantry** | Quantities, purchase and expiry dates, expiring-soon warnings. Ingredients you already have start unticked when you add a recipe to the grocery list. |
 | **Logging meals** | Recipes carry **nutrition per serving**: imported from the page, read from Paprika's nutrition text, typed in, or estimated with AI from the ingredients. Ways to log: *Log to diary* from a recipe, *Add food → Recipe* in the diary, a one-tap *Log* on planned meals (shown in the diary and the plan), or **Auto-log planned meals**, which logs planned recipes once their meal time passes (breakfast 10:00, lunch 14:00, snack 17:00, dinner 20:00). Auto-log catches up on the last 7 days, skips days you've completed, and can't double-log from two devices. |
-| **Sharing** | *Share* posts a recipe to the friends feed. Friends can open the full recipe, react, and *Save to my recipes*. |
+| **Sharing** | *Share* posts a recipe to the friends feed. Friends can open the full recipe, react, and *Add to my recipes* straight from the post. Friends can also browse your whole recipe book on your profile and copy recipes from it (your ratings, favourites and cooking history stay yours). |
 
-Recipes, grocery lists, the meal plan, pantry and menus are private to you; only recipes you share are visible to friends.
+Your recipe book is visible to friends (read-only) unless you turn off **Recipe book** under Settings → Privacy or on your profile. Grocery lists, the meal plan, pantry and menus are always private.
 
 ### What friends can see
 
@@ -50,7 +51,8 @@ Recipes, grocery lists, the meal plan, pantry and menus are private to you; only
 | | Weight history chart (private) | Posts marked "only me" |
 | | Height, calorie goal (private) | |
 | | Food log (private) | |
-| | Activity history (shared) | |
+| | Activity history (shared) | Grocery lists, meal plan, pantry, menus |
+| | Recipe book (shared) | |
 
 The Firestore security rules enforce these settings on the server, not just in the UI. Data a friend isn't allowed to read is never sent to their browser. One exception: Storage download URLs act as bearer links, so anyone who has a photo's URL can open it.
 

@@ -22,7 +22,7 @@ const TITLES: [RegExp, string][] = [
   [/^\/settings/, 'Settings'],
   [/^\/emojis/, 'Custom emojis'],
   [/^\/invite/, 'Invite'],
-  [/^\/recipes\/import/, 'Import recipes'],
+  [/^\/recipes\/import/, 'Add recipes'],
   [/^\/recipes/, 'Recipes'],
   [/^\/plan/, 'Meal plan'],
   [/^\/grocery/, 'Groceries'],

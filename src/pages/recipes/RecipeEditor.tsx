@@ -13,6 +13,8 @@ import { RecipeImage, RecipesNav, Stars } from './bits';
 import { useRecipe, useRecipes } from './data';
 
 export const DRAFT_KEY = 'wefit.recipe.draft';
+/** Set alongside a draft made by AI: what the model assumed, shown above the form. */
+export const DRAFT_AI_NOTE_KEY = 'wefit.recipe.draft.ai';
 
 type Draft = RecipeSnapshot & Partial<Pick<Recipe, 'rating' | 'favorite' | 'imagePath'>>;
 type NVals = Partial<Record<keyof Nutrients, number | ''>>;
@@ -54,6 +56,10 @@ function EditorForm({ id, initial }: { id: string | null; initial: Recipe | null
   const [nvals, setNvals] = useState<NVals>(() => toVals(r.perServing));
   const [nSource, setNSource] = useState(r.perServingSource ?? null);
   const [catInput, setCatInput] = useState('');
+  const [aiNote] = useState<string | null>(() => {
+    if (initial || !location.search.includes('draft=1')) return null;
+    try { return sessionStorage.getItem(DRAFT_AI_NOTE_KEY); } catch { return null; }
+  });
   const [pct, setPct] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setR((x) => ({ ...x, [k]: v }));
@@ -106,12 +112,12 @@ function EditorForm({ id, initial }: { id: string | null; initial: Recipe | null
       directions: r.directions.split('\n').map((l) => l.trim()).filter(Boolean).join('\n'),
     };
     const newId = saveRecipe(uid, id, data);
-    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_AI_NOTE_KEY); } catch { /* ignore */ }
     toast(id ? 'Recipe saved' : 'Recipe added to your recipes');
     nav(`/recipes/${newId}`, { replace: true });
   });
 
-  useEffect(() => () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } }, []);
+  useEffect(() => () => { try { sessionStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_AI_NOTE_KEY); } catch { /* ignore */ } }, []);
 
   const text = (k: keyof Draft, label: string, ph = '') => (
     <label className="f"><span>{label}</span><input value={String(r[k] ?? '')} placeholder={ph} onChange={(e) => set(k, e.target.value as never)} /></label>
@@ -120,7 +126,14 @@ function EditorForm({ id, initial }: { id: string | null; initial: Recipe | null
   return (
     <div className="page">
       <RecipesNav />
-      <h1>{id ? 'Edit recipe' : r.sourceUrl ? 'Review imported recipe' : 'New recipe'}</h1>
+      <h1>{id ? 'Edit recipe' : aiNote != null ? 'Review AI recipe' : r.sourceUrl ? 'Review imported recipe' : 'New recipe'}</h1>
+      {aiNote != null && (
+        <div className="warn-box small">
+          <b>✨ Drafted by AI from your photo.</b> Quantities, steps and nutrition are estimates: adjust anything below, then save.
+          After changing ingredients, use <b>Estimate with AI</b> under Nutrition to recalculate.
+          {aiNote && <div className="muted" style={{ marginTop: 4 }}>{aiNote}</div>}
+        </div>
+      )}
       <Panel title="Basics">
         <div className="col gap2">
           <label className="f"><span>Name *</span><input value={r.name} onChange={(e) => set('name', e.target.value)} autoFocus={!id} /></label>
