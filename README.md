@@ -79,16 +79,25 @@ Feedback stays visible but quiet. Buttons show a spinner while saving and a brie
 
    Only workflows from this exact repository can use the service account. Then put the printed provider path, service account email and your project ID in the `env:` block at the top of `.github/workflows/deploy.yml`. They aren't secrets.
 
-7. **Cloud Functions (needed for recipe import):** new Google Cloud organisations no longer grant default roles automatically, so run this once in [Cloud Shell](https://shell.cloud.google.com):
+7. **Cloud Functions (needed for recipe import):** new Google Cloud organisations no longer create or grant default accounts automatically, so run this once in [Cloud Shell](https://shell.cloud.google.com) (bash, not Windows PowerShell):
 
    ```bash
    PROJECT_ID=your-project-id
    PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
    SA="github-deploy@$PROJECT_ID.iam.gserviceaccount.com"
    COMPUTE_SA="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
-   gcloud services enable cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
+
+   # services (Compute Engine creates the default runtime account; no cost by itself)
+   gcloud services enable compute.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
      run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com --project "$PROJECT_ID"
-   for ROLE in roles/cloudfunctions.admin roles/run.admin roles/artifactregistry.admin roles/eventarc.admin roles/iam.serviceAccountUser roles/datastore.viewer; do
+   gcloud beta services identity create --service=pubsub.googleapis.com --project "$PROJECT_ID"
+   for i in $(seq 1 30); do
+     gcloud iam service-accounts describe "$COMPUTE_SA" --project "$PROJECT_ID" >/dev/null 2>&1 && echo "runtime account exists" && break
+     echo "waiting for the runtime account…"; sleep 10
+   done
+
+   # permissions
+   for ROLE in roles/cloudfunctions.admin roles/run.admin roles/artifactregistry.admin roles/eventarc.admin roles/iam.serviceAccountUser roles/datastore.viewer roles/serviceusage.serviceUsageAdmin; do
      gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" --role="$ROLE" --condition=None >/dev/null && echo "deploy account: $ROLE"
    done
    for ROLE in roles/cloudbuild.builds.builder roles/eventarc.eventReceiver roles/run.invoker roles/datastore.user roles/logging.logWriter; do
